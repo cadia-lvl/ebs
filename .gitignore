@@ -1,0 +1,9 @@
+*.mat
+src/_pesq_itu_results.txt
+src/_pesq_results.txt
+src/tmp1.wav
+src/tmp2.wav
+*.DS_Store*
+*.asv
+projParam.m
+*.scp
