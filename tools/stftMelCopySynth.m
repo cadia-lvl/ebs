@@ -44,7 +44,7 @@ for ik=1:length(par.frameMethod)
 
     for is=1:length(par.numMels)
         % Calculate mel spectrum and reconstruct
-        sdftr=melAndReconstruct(sdft,fs,par.nfft,nfftp,par.numMels(is));
+        sdftr=melAndReconstruct(sdft,fs,par.nfft,nfftp,par.numMels(is),par.fbankmethod,par.preserveDC);
 
         %Do the inverse FFT
         vsr=gs_istft(sdftr,frames);
