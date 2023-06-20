@@ -22,3 +22,5 @@ input = strcat(pesq_path,command);
 [~,output] = system(input);
 
 pesqScore = str2double(output);
+
+system('rm tmp1.wav tmp2.wav _pesq_results.txt _pesq_itu_results.txt');

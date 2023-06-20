@@ -5,7 +5,7 @@ par.pth.fetext='mat';
 fs=16000;
 
 %Parameters needed for making filelists /globbing
-par.pth.speechpth = '/Users/username/TIMIT/';
+par.pth.speechpth = '/Users/username/TIMIT';
 par.pth.frm='wav';
 par.pth.fetpth = '';
 par.pth.splistname = 'splist.scp';
