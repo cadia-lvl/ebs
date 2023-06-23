@@ -1,4 +1,4 @@
-function [stft,framelen]=gs_stft_noPadding(s,framex,nfft)
+function [stft,framelen]=gs_stft_nzp(s,framex,nfft)
 
 nframe=length(framex); % number of frames
 framekk=[[1 framex(1:end-1)+1];framex]; %  start and end samples for each frame
