@@ -1,4 +1,4 @@
-function stftm=spec2melNoPadding(stft,fs,numMelFilters,framelen)
+function stftm=spec2mel_nzp(stft,fs,numMelFilters,framelen)
 
 %  Inputs: sdft(nfft,nframes)    complex STFT coefficients
 %          fs                   sample frequency                                
