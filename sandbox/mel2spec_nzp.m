@@ -1,4 +1,4 @@
-function stftr=mel2specNoPadding(stftm,fs,nfft,framelen,stftangle)
+function stftr=mel2spec_nzp(stftm,fs,nfft,framelen,stftangle)
 
 
 [numMelFilters,nframes]=size(stftm);
