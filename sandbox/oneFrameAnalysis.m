@@ -33,7 +33,7 @@ ylabel('Normalised speech signal amplitude');
 
 [stftEpoch,fax]=gs_stft(s,framesEpoch,par.db.nfft);
 [stftFixed,fax]=gs_stft(s,framesFixed,par.db.nfft);
-[stft,framelen]=gs_stft_noPadding(s,framesEpoch,par.db.nfft);
+[stft,framelen]=gs_stft_nzp(s,framesEpoch,par.db.nfft);
 ixFlen=framelen(ixEpoch)/2;
 faxNoPadd=(0:ixFlen)*fs/ixFlen*0.5;
 nfftp=1+floor(ixFlen/2); 
@@ -92,7 +92,7 @@ nrgmbmNoPadd=sqrt(sum(full(mbmNoPadd')));
 nfftp=length(fax);
 [sdftrFixed, sdftmFixed]=melAndReconstruct(stftFixed,fs,par.db.nfft,nfftp,numMels,par.db.fbankmethod,par.db.preserveDC);
 [sdftrEpoch, sdftmEpoch]=melAndReconstruct(stftEpoch,fs,par.db.nfft,nfftp,numMels,par.db.fbankmethod,par.db.preserveDC);
-stftm=spec2melNoPadding(stft,fs,numMels,framelen);
+stftm=spec2mel_nzp(stft,fs,numMels,framelen);
 
 % We compare the Mel-energies and notice how the nonpadded epoch mel
 % cepstrum is similar to the padded one (with a ratio of nfftp/ixFlen)
@@ -136,7 +136,7 @@ linkaxes(ax42','x')
 % Running mel2specNoPadding so we get the pinv version of the reconstructed
 % "nopadding" spectrum
 stftangle=angle(stft);
-stftr=mel2specNoPadding(stftm,fs,par.db.nfft,framelen,stftangle);
+stftr=mel2spec_nzp(stftm,fs,par.db.nfft,framelen,stftangle);
 
 % Use interpolation directly just on that single frame.
 %Vq = interp1(X,V,Xq);
