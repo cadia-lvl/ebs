@@ -15,7 +15,7 @@ end;
 
 nfft=size(stft,1);
 nfftp=1+floor(nfft/2);
-mbm=v_filtbankm(abs(numMelFilters),nfft,fs,0,fs/2,'m');
+mbm=v_filtbankm(numMelFilters,nfft,fs,0,fs/2,'m');
 if preserveDC
     mbm=vertcat(sparse(1,1,1,1,nfftp),mbm); % preappend an extra row to preserve the DC value
 end

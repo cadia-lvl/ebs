@@ -1,4 +1,4 @@
-function frames=getFrames(s,fs,par,ik);
+function frames=getFrames(s,fs,par,frameMethod);
 
 % getFrames Calculates frame boundaries for speech spectrogram calculation
 %
@@ -19,7 +19,7 @@ function frames=getFrames(s,fs,par,ik);
 %                   signal
 
 ns=length(s);
-switch par.frameMethod{ik}
+switch frameMethod
     case 'Fixed'
         frames=par.nfft:par.nfft:ns;
     case 'Epoch'
@@ -36,7 +36,7 @@ switch par.frameMethod{ik}
             warning('Some frames are too long')
         end
     otherwise
-        error(['Frame method " ' par.frameMethod{ik} ' "is not defined']);
+        error(['Frame method " ' frameMethod ' "is not defined']);
 
 end
 

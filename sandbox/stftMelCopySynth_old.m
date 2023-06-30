@@ -1,4 +1,4 @@
-function out = stftMelCopySynth(spfile,par)
+function out = stftMelCopySynth_old(spfile,par)
 
 % stftMelCopySynth performs spectrogram Mel copy-synthesis
 %
@@ -33,48 +33,30 @@ end
 
 snrMatPhn=cell(length(par.numMels),length(par.frameMethod),length(phn.in));
 
-nzp=0;  %Assume that we do zero padding
 for ik=1:length(par.frameMethod)
-    frameMethod=par.frameMethod{ik};
-    if strcmp(frameMethod(end-2:end),'nzp')  %Use the same frame method for non zero padd approach
-        frameMethod=frameMethod(1:end-4);
-        nzp=1;  %Switch on no zero padding
-    end;
-
-    % 1) Calculate frames for method ik
-    frames=getFrames(s,fs,par,frameMethod);
-
-    % 2) Calculate STFT based on frames
-    if nzp
-        [stft,framelen]=gs_stft_nzp(s,frames,par.nfft);    
-    else
-        stft=gs_stft(s,frames,par.nfft);
-    end
+    % Calculate frames for method ik
+    frames=getFrames(s,fs,par,ik);
+    
+    % Calculate STFT based on frames
+    [sdft,fax]=gs_stft(s,frames,par.nfft);
+    fax=fax*fs;                                         % convert frequency axis to Hz
+    nfftp=length(fax);
 
     for is=1:length(par.numMels)
-        % 3) Convert spectrograms to Mel energy - grams
-        % 4) Convert Mel Energy-grams to spectrograms
-        % 5) Invert spectrograms to time domain signal
-        if nzp
-           stftm=spec2mel_nzp(stft,fs,par.numMels(is),framelen,par.preserveDC);
-           stftr=mel2spec_nzp(stftm,fs,par.nfft,framelen,par.preserveDC,angle(stft));
-           vsr=gs_istft_nzp(stftr,frames);
-        else
-           stftm=spec2mel(stft,fs,par.numMels(is),par.preserveDC);
-           stftr=mel2spec(stftm,fs,par.nfft,par.preserveDC,angle(stft));
-           vsr=gs_istft(stftr,frames);
+        % Calculate mel spectrum and reconstruct
+        sdftr=melAndReconstruct(sdft,fs,par.nfft,nfftp,par.numMels(is),par.fbankmethod,par.preserveDC);
 
-        end
+        %Do the inverse FFT
+        vsr=gs_istft(sdftr,frames);
 
-        % 6) Calculate SNR and maybe PESQ
-        snrMat(is,ik)=calculateSNR(s,vsr);
+        nsu=length(vsr);                                 % lengthof vu is slightly less due to framing
+        ssq=sum(s(1:nsu).^2);
+        snrMat(is,ik)=-db(sum((vsr(1:nsu)-s(1:nsu)).^2)/ssq);
 
         if par.doPESQ==1
             pesqMat(is,ik)=computePESQ(s,vsr,par);
         end
 
-        % Calculate SNR for each phone segment
-        nsu=length(vsr);
         for ij=1:length(phn.tstart)
             segIx=max([1,phn.tstart(ij)]):min([nsu,phn.tend(ij)]);
             ssqSeg=sum(s(segIx).^2);

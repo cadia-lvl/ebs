@@ -29,7 +29,7 @@ TickFontSize=16;
 
 figure(1); clf;
 ax1(1)=subplot(2,1,1);
-for ir=1:3
+for ir=1:length(par.db.frameMethod)
     errorbar(par.db.numMels,m_snrMat(:,ir),s_snrMat(:,ir),'LineWidth',1); hold on;
 end;
 grid on;
@@ -37,7 +37,7 @@ ylabel('SNR [dB]','FontSize',LabelFontSize);
 set(gca,'FontSize',TickFontSize)
 legend({'F','E','A'},'Location','NorthWest');
 ax1(2)=subplot(2,1,2);
-for ir=1:3
+for ir=1:length(par.db.frameMethod)
     errorbar(par.db.numMels,m_pesqMat(:,ir),s_pesqMat(:,ir),'LineWidth',1); hold on;
 end;
 grid on;
