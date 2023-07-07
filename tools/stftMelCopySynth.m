@@ -33,13 +33,10 @@ end
 
 snrMatPhn=cell(length(par.numMels),length(par.frameMethod),length(phn.in));
 
-nzp=0;  %Assume that we do zero padding
-for ik=1:length(par.frameMethod)
-    frameMethod=par.frameMethod{ik};
-    if strcmp(frameMethod(end-2:end),'nzp')  %Use the same frame method for non zero padd approach
-        frameMethod=frameMethod(1:end-4);
-        nzp=1;  %Switch on no zero padding
-    end;
+for ik=1:length(par.config)
+    frameMethod=par.config{ik}.frameMethod;
+    preserveDC=par.config{ik}.preserveDC;
+    nzp=par.config{ik}.nzp;
 
     % 1) Calculate frames for method ik
     frames=getFrames(s,fs,par,frameMethod);
@@ -56,14 +53,13 @@ for ik=1:length(par.frameMethod)
         % 4) Convert Mel Energy-grams to spectrograms
         % 5) Invert spectrograms to time domain signal
         if nzp
-           stftm=spec2mel_nzp(stft,fs,par.numMels(is),framelen,par.preserveDC);
-           stftr=mel2spec_nzp(stftm,fs,par.nfft,framelen,par.preserveDC,angle(stft));
+           stftm=spec2mel_nzp(stft,fs,par.numMels(is),framelen,preserveDC);
+           stftr=mel2spec_nzp(stftm,fs,par.nfft,framelen,preserveDC,angle(stft));
            vsr=gs_istft_nzp(stftr,frames);
         else
-           stftm=spec2mel(stft,fs,par.numMels(is),par.preserveDC);
-           stftr=mel2spec(stftm,fs,par.nfft,par.preserveDC,angle(stft));
+           stftm=spec2mel(stft,fs,par.numMels(is),preserveDC);
+           stftr=mel2spec(stftm,fs,par.nfft,preserveDC,angle(stft));
            vsr=gs_istft(stftr,frames);
-
         end
 
         % 6) Calculate SNR and maybe PESQ

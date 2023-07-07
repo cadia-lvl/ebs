@@ -22,6 +22,11 @@ ns=length(s);
 switch frameMethod
     case 'Fixed'
         frames=par.nfft:par.nfft:ns;
+    case 'FixedNE'
+        frames=gs_frames(s,fs,par);    %Just to figure out the number of frames of Epoch
+        nfr=length(frames);
+        nfft=round(ns/nfr);
+        frames=nfft:nfft:ns;
     case 'Epoch'
         frames=gs_frames(s,fs,par);
     case 'EpochAdj'
