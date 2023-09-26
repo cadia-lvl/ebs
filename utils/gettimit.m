@@ -23,7 +23,7 @@ function [s,fs,wrd,phn,txt]=gettimit(f,m)
 % test set includes 168 speakers. No SI or SX sentences are common to the test
 % and training sets.
 %
-% see also: timitfiles
+% see also:  timitfiles
 persistent dd
 
 if isempty(dd)
