@@ -7,3 +7,4 @@ src/tmp2.wav
 *.asv
 projParam.m
 *.scp
+sandbox-local/
