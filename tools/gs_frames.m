@@ -21,15 +21,15 @@ function [framek,gci]=gs_frames(s,fs,pardb)
 if nargin<3
     pitchlim=[40 50 400];                               % {min targt max} pitch (Hz)
     gcifrac=0.3;                                        % position of GCI in analysis frame
-    gciMethod='YAGA';
+    GCImethod='YAGA';
 else
     pitchlim=pardb.pitchlim;                               % {min targt max} pitch (Hz)
     gcifrac=pardb.gcifrac;                                 % position of GCI in analysis frame
-    gciMethod=pardb.GCImethod;
+    GCImethod=pardb.GCImethod;
 end
 %
 ns=length(s); % length of speech signal
-switch gciMethod % find gci's
+switch GCImethod % find gci's
     case 'YAGA'
         [gci,goi] = dypsagoi(s,fs);
         gci=gci/fs;
@@ -38,7 +38,7 @@ switch gciMethod % find gci's
         fxmed=median(fx);                                               % median pitch
         [gci, mbs, res] = gci_sedreams(s, fs, fxmed, 1);
     otherwise
-        error(['GCI method ' gciMethod ' is not recognised.']);
+        error(['GCI method ' GCImethod ' is not recognised.']);
 end;
 gcik=round(gci*fs+1);                                           % convert to sample numbers
 gcikorig=gcik; % save for debugging
