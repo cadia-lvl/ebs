@@ -4,7 +4,7 @@ function [framek,gci]=gs_frames(s,fs,pardb)
 %  Inputs:      s       Speech signal
 %              fs       Sample Frequency
 %               pardb (optional)    
-%                         .pitchlim   {min targt max} pitch (Hz)
+%                         .pitchlim   {min target max} pitch (Hz)
 %                         .gcifrac    position of GCI in analysis frame
 %                         .GCImethod  either 'YAGA' (default) or SEDREAMS
 %
@@ -19,7 +19,7 @@ function [framek,gci]=gs_frames(s,fs,pardb)
 %   (could use an input parameter structure)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if nargin<3
-    pitchlim=[40 50 400];                               % {min targt max} pitch (Hz)
+    pitchlim=[40 50 400];                               % {min target max} pitch (Hz)
     gcifrac=0.3;                                        % position of GCI in analysis frame
     gciMethod='YAGA';
 else
