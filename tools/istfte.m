@@ -7,7 +7,7 @@ function s=istfte(stft,meta)
 %
 % Outputs: s(ns,1)                  real-valued signal
 %
-% Transformations are applied in the order groupdelay, inverse dft, unpad, window, scale, offset
+% Transformations are applied in the order groupdelay, inverse dft, unpad, scale, offset
 % Frames will be overlap-added to create the output, s, without any windowing.
 %
 % Bugs/Suggestions:
