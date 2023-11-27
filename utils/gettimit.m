@@ -25,7 +25,6 @@ function [s,fs,wrd,phn,txt]=gettimit(f,m)
 %
 % see also:  timitfiles
 persistent dd
-
 if isempty(dd)
     par=projParam();
     dd=par.pth.speechpth;
