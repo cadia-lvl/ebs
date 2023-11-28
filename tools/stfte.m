@@ -6,7 +6,7 @@ function [stft,meta]=stfte(s,metain,maxfft,par)
 %          maxfft                   max size of frame in stft domain [default: max(metain(:,2))]
 %          par                      parameter structure containing optional parameters
 %                                       =Parameter=     =Default=   =Description=
-%                                       par.offset      'none'      offset removal: {'none','mean'}
+%                                       par.offset      'none'      offset removal: {'none','mean','ends'}
 %                                       par.scale       'none'      scaling method: {'none','peakabs','rms'}
 %                                       par.pad         'none'      zero-padding method: {'none','zero','ends'}
 %                                       par.groupdelay  'none'      linear phase component: {'none','ewgd','ewgdint','cplx','cplxint','phgr','phgrint'}
@@ -15,6 +15,26 @@ function [stft,meta]=stfte(s,metain,maxfft,par)
 %          meta(nframe,6)           output metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay]
 %
 % Transformations are applied in the order offset, scale, pad, dft, groupdelay. If pad option is 'ends', the group delay can exceed the length of the unpadded frame.
+%
+% Algorithm Options:
+%
+%   par.offset      'none'      No offset-removal is performed so meta(:,4)=0
+%                   'mean'      The mean of each frame is subtracted from the frame
+%                   'ends'      The average of the first and last samples in each frame is subtracted from the frame
+%   par.scale       'none'      No scaling is performed so meta(:,5)=1
+%                   'peakabs'   Scale each frame so the peak absolute value equals 1
+%                   'rms'       Scale each frame so that the root-mean-square value equals 1
+%   par.pad         'none'      No padding is performed so dft-length for each fr4ame equals the frame length and meta(:,3)=meta(:,2) 
+%                   'zero'      Pad each frame with zeros to a length of maxfft
+%                   'ends'      Padd each frame with the average of the end values to a length of maxfft
+%   par.groupdelay  'none'      No group delay compensation is performed so meta(:,6)=0 (i.e. zero samples delay)
+%                   'ewgd'      Take group delay equal to the centre of gravity of the energy of the frame after padding
+%                   'ewgdint'   As above but rounded to an integer number of samples
+%                   'cplx'      As ewgd but convert position in frame to a complex number before doing the energy-weighted
+%                               average. This mirrors the circularity of the DFT.
+%                   'cplxint'   As above but rounded to an integer number of samples
+%                   'phgr'      Calculate the enegrgy-weighted phase decrement beween successive frequency bins in the DFT output
+%                   'phgrint'   As above but rounded to an integer number of samples
 % Bugs/Suggestions:
 % (1) for overlapping frames could apply a window before doing the fft
 %
@@ -23,7 +43,7 @@ persistent q0
 % define default parameters
 %
 if isempty(q0)
-    q0.offset='none';                   %  offset removal: {'none','mean'}
+    q0.offset='none';                   %  offset removal: {'none','mean','ends'}
     q0.scale='none';                    %  scaling method: {'none','peakabs','rms'}
     q0.pad='none';                      % zero-padding method: {'none','zero','ends'}
     q0.groupdelay='none';               % linear phase component: {'none','ewgd','ewgdint','cplx','cplxint'}
@@ -50,10 +70,15 @@ stft=NaN(nframe,maxfft);                                        % space for stft
 sfrix=repmat(0:maxfft-1,nframe,1)+repmat(meta(:,1),1,maxfft);   % index into s for frame samples
 sfrmk=repmat(1:maxfft,nframe,1)<=repmat(meta(:,2),1,maxfft);    % mask for valid values
 sfr(sfrmk)=s(sfrix(sfrmk));                                     % enframe the data
-if strcmp(q.offset,'mean')
-    meta(:,4)=sum(sfr,2)./meta(:,2);                            % find mean of each frame
-    sfrrep=repmat(meta(:,4),1,maxfft);
-    sfr(sfrmk)=sfr(sfrmk)-sfrrep(sfrmk);                        % subtract mean from valid samples
+switch q.offset
+    case 'mean'
+        meta(:,4)=sum(sfr,2)./meta(:,2);                                % find mean of each frame
+        sfrrep=repmat(meta(:,4),1,maxfft);
+        sfr(sfrmk)=sfr(sfrmk)-sfrrep(sfrmk);                            % subtract mean from valid samples
+    case 'ends'
+        meta(:,4)=0.5*(sfr(:,1)+sfr((meta(:,2)-1)*nframe+(1:nframe)')); % find average of the end-samples of each frame
+        sfrrep=repmat(meta(:,4),1,maxfft);
+        sfr(sfrmk)=sfr(sfrmk)-sfrrep(sfrmk);                            % subtract mean from valid samples
 end
 if strcmp(q.scale,'rms')
     meta(:,5)=sqrt(sum(sfr.^2,2)./meta(:,2));               % find rms
@@ -74,7 +99,7 @@ if all(meta(:,2)==meta(1,2))                                % all frames are the
     if strcmp(q.pad,'ends') && framelen~=maxfft              % we need to pad frames with the average of the endpoints
         sfr(:,framelen+1:maxfft)=repmat(sfr(:,[1 framelen])*[0.5;0.5],1,maxfft-framelen);   % pad with average of endpoints
     end
-    nfft=meta(1,3);                                         % DFT length
+    nfft=meta(1,3);                                         % DFT length of all frames
     stft(:,1:nfft)=fft(sfr(:,1:nfft),nfft,2);               % Perform DFT on all frames
     if ~strcmp(q.groupdelay,'none')
         switch q.groupdelay(1:4)
