@@ -1,9 +1,12 @@
 % test copy synthesis:  signal -> stfte -> melc -> stfte -> signal
 close all;
+% Select which parameters to alter
+parvar={'pad' 'invmethod'};                 % cell array row listing the parameters to change during trials
+partry={'zero' 'linterp'};                  % one row per trial giving the parameter values
 % Define default parameters
-nmel=30;
-wavopt=2;
-viamel=0; % 0= stfte/istfte only, 1=stfte/stfte2melc/melc2stfte/istfte
+nmel=30;                                    % number of mel filters to use
+wavopt=2;                                   % 0=previous, 1=cosine, 2=glottal flow derivative, 3=TIMIT-file
+viamel=0;                                   % 0=stfte/istfte only, 1=stfte/stfte2melc/melc2stfte/istfte
 %
 par.pitchlim=[40 50 400];                   % {min targt max} pitch (Hz)
 par.gcifrac=0.3;                            % position of GCI in analysis frame
@@ -57,8 +60,6 @@ switch wavopt
         framelim=[[1 frameend(1:end-1)+1];frameend];  % create frame limits
         framelen=1+[-1 1]*framelim;                 % length of each frame in samples
 end
-parvar={'pad' 'invmethod'};                 % cell array row listing the parameters to change during trials
-partry={'zero' 'linterp'}; % one row per trial giving the parameter values
 metain=[framelim(1,:);framelen]';
 for i=1:size(partry,1)
     %
