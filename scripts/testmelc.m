@@ -2,7 +2,7 @@
 close all;
 % Define default parameters
 nmel=30;
-wavopt=3;
+wavopt=2;
 viamel=0; % 0= stfte/istfte only, 1=stfte/stfte2melc/melc2stfte/istfte
 %
 par.pitchlim=[40 50 400];                   % {min targt max} pitch (Hz)
