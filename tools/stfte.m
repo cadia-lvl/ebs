@@ -59,11 +59,11 @@ end
 nframe=size(metain,1);                  % number of frames
 meta=zeros(nframe,6);                   % space for metadata
 meta(:,1:2)=metain;                     % copy frame start and frame length information
-framelen=meta(:,2);                     % length of each frame in samples
+framelens=meta(:,2);                     % length of each frame in samples
 if nargin<3 || isempty(maxfft)
-    maxfft=max(meta(:,2));              % set maxfft to maximum frame length
+    maxfft=max(framelens);              % set maxfft to maximum frame length
 else
-    meta(:,2)=min(meta(:,2),maxfft);    % no framelength can exceed maxfft
+    framelens=min(framelens,maxfft);    % no framelength can exceed maxfft
 end
 sfr=zeros(nframe,maxfft);                                       % space for frames (one per row)
 stft=NaN(nframe,maxfft);                                        % space for stft; unused entries will be left as NaN
@@ -94,8 +94,8 @@ if strcmp(q.pad,'none')                                     % if no padding
 else                                                        % need to include padding
     meta(:,3)=maxfft;                                       % dft length equals maxfft
 end
-if all(meta(:,2)==meta(1,2))                                % all frames are the same length so we can do them all at once
-    framelen=meta(1,2);                                     % constant frame length for all frames
+if all(framelens==framelens(1))                                % all frames are the same length so we can do them all at once
+    framelen=framelens(1);                                     % constant frame length for all frames
     if strcmp(q.pad,'ends') && framelen~=maxfft              % we need to pad frames with the average of the endpoints
         sfr(:,framelen+1:maxfft)=repmat(sfr(:,[1 framelen])*[0.5;0.5],1,maxfft-framelen);   % pad with average of endpoints
     end
@@ -118,7 +118,7 @@ if all(meta(:,2)==meta(1,2))                                % all frames are the
 else                                                        % we must process frames individually 'cos varying lengths
     framelen=-1;                                            % initialize to invalid frame length (used to avoid recalculating window unnecessarily)
     for i=1:nframe
-        framelen=meta(i,2);                                 % length of this frame in samples
+        framelen=framelens(i);                                 % length of this frame in samples
         if strcmp(q.pad,'ends') && framelen~=maxfft
             sfr(i,framelen+1:maxfft)=repmat(sfr(i,[1 framelen])*[0.5;0.5],1,maxfft-framelen); % pad with average of endpoints
         end

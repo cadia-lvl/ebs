@@ -27,17 +27,17 @@ if nmeta<6
         end
     end
 end
-frameend=meta(:,1:2)*[1;1]-1;           % calculate last sample of each frame
-s=zeros(frameend(end),1);               % space for reconstituted signal
-% assume that frames might all be of different lengths
+framelens=min(meta(:,2),maxfft);        % datapoints in each frame in samples
+s=zeros(meta(end,1:2)*[1;1]-1,1);       % space for reconstituted signal
+frameend=meta(:,1)+framelens-1;         % calculate last datsapoint of each frame
+% assume that frames might all be of different lengths (could probably speed up the constant-frame-length case)
 for i=1:nframe
-    nfft=meta(i,3);                     % DFT length of this framew
+    nfft=meta(i,3);                     % DFT length of this frame
     if meta(i,6)~=0                     % apply group delay linear phase shift
         stft(i,1:nfft)=stft(i,1:nfft).*exp(-2i*pi/nfft*meta(i,6)*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1]); % apply group delay (except to Nyquist frequency)
     end
     sfr=ifft(stft(i,1:nfft));           % Perform inverse DFT
-    framelen=meta(i,2);
-    sfr=sfr(1:framelen);                % truncate to remove any padding
+    sfr=sfr(1:framelens(i));            % truncate to remove any padding
     sfr=sfr*meta(i,5)+meta(i,4);        % scale the data and add offset
     s(meta(i,1):frameend(i))=s(meta(i,1):frameend(i))+real(sfr(:)); % overlap add into the output waveform
 end
