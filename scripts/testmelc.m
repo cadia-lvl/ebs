@@ -1,11 +1,11 @@
 % test copy synthesis:  signal -> stfte -> melc -> stfte -> signal
 close all;
 % Select which parameters to alter
-parvar={'pad' 'invmethod'};                 % cell array row listing the parameters to change during trials
-partry={'zero' 'linterp'};                  % one row per trial giving the parameter values
+parvar={'pad' 'groupdelay'};                 % cell array row listing the parameters to change during trials
+partry={'zero' 'none';'zero' 'ewgd';'zero' 'gcif'};                  % one row per trial giving the parameter values
 % Define default parameters
 nmel=30;                                    % number of mel filters to use
-wavopt=2;                                   % 0=previous, 1=cosine, 2=glottal flow derivative, 3=TIMIT-file
+wavopt=3;                                   % 0=previous, 1=cosine, 2=glottal flow derivative, 3=TIMIT-file
 viamel=0;                                   % 0=stfte/istfte only, 1=stfte/stfte2melc/melc2stfte/istfte
 %
 par.pitchlim=[40 50 400];                   % {min targt max} pitch (Hz)
@@ -14,7 +14,7 @@ par.GCImethod='YAGA';                       % Glottal closure detection algorith
 par.offset='none';                          % offset removal: {'none','mean'}
 par.scale='none';                           % scaling method: {'none','peakabs','rms'}
 par.pad='zero';                             % zero-padding method: {'none','zero','ends'}
-par.groupdelay='none';                      % linear phase component: {'none','ewgd','ewgdint','cplx','cplxint'}
+par.groupdelay='none';                      % linear phase component: {'none','ewgd','ewgdint','cplx','cplxint','phgr','phgrint','gcif','gcifint'}
 par.keepDC=1;                               % preserve DC as the lowest MEL bin {0, 1}
 par.MELphase='piecewiselin';                % MEL STFT phase calculation: {'true','zero','linear','piecewiselin'}
 par.MELdom='pow';                           % MEL filterbank domain: {'mag', 'pow'}
@@ -55,7 +55,7 @@ switch wavopt
         end
         s=v_glotlf(1,ts);
     case 3
-        [timf,ttimy,tk,s,fs,timwrd,timphn]=timitfiles('pz',1);    % read a level-normalized random TIMIT file
+        [s,fs]=v_readsph('../data/SI943.WAV');    % read a level-normalized random TIMIT file
         frameend=gs_frames(s,fs,par);
         framelim=[[1 frameend(1:end-1)+1];frameend];  % create frame limits
         framelen=1+[-1 1]*framelim;                 % length of each frame in samples
@@ -114,12 +114,28 @@ for i=1:size(partry,1)
     stfte(s,metain,[],par);
     title(['STFTE in: ' partxt]);
     if viamel
-        figure(30+i);                                           % ********* plot mel spectrum
+        figure(30+i);                                       % ********* plot mel spectrum
         stfte2melc(stft,fs,nmel,par);
         title(['Mel: ' partxt]);
-        figure(40+i);                                           % ********* plot output stfte
+        figure(40+i);                                       % ********* plot output stfte
         melc2stfte(melbm,melbu,fs,meta,par);
         title(['STFTE out: ' partxt]);
+    end
+    if any(strcmp(parvar,'groupdelay'))
+        figure(50+i);                                       % ********* plot group delay histogram
+        gdf=meta(:,6)./meta(:,2);
+        nbin=15;
+        histogram(gdf,[min(min(gdf,0)) max(max(gdf,1))]*[(nbin:-1:0)+0.5;(0:nbin)-0.5]/(nbin-1));
+        v_axisenlarge([1 1 1 -1.05]);
+        if isfield(par,'gcifrac')
+            ylim=get(gca,'ylim');
+            hold on
+            plot([par.gcifrac par.gcifrac],ylim,'--k');
+            hold off
+        end
+        xlabel('Group delay [frac of frame]');
+        ylabel('Frequency');
+        title(['Grp Delay: ' partxt]);
     end
     figure(60+i);                                           % ********* plot output signal
     plot(sr,'-b');
