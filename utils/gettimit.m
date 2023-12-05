@@ -1,8 +1,10 @@
-function [s,fs,wrd,phn,txt]=gettimit(f,m)
+function [s,fs,wrd,phn,txt]=gettimit(f,m,timit)
 %  Inputs:   F       file name ['TEST/DR1/FAKS0/SA1.WAV']
 %            M       mode string:
-%                    'n'  Normalize speech level to 0 dB using ITU P.56
-%                    'v'  Trim leading and ending silences
+%                       'n'  Normalize speech level to 0 dB using ITU P.56
+%                       'v'  Trim leading and ending silences
+%        TIMIT       base folder for the TIMIT files with or without a final '/' (parent of TEST and TRAIN)
+%                    This is assumed not to change between calls.
 %
 % Outputs:   S(:,1)  speech waveform
 %           FS       sample frequency (always 16000)
@@ -26,8 +28,26 @@ function [s,fs,wrd,phn,txt]=gettimit(f,m)
 % see also:  timitfiles
 persistent dd
 if isempty(dd)
-    par=projParam();
-    dd=par.pth.speechpth;
+    if nargin>2
+        dd=timit;
+    else
+        vbdata=v_voicebox('dir_data');
+        if ~isempty(vbdata)
+            dd=fullfile(vbdata,'timit');
+        else
+            dd='timit';
+        end
+        % par=projParam();
+        % dd=par.pth.speechpth;
+    end
+    ddt=fullfile(dd,'TIMIT');
+    if ~(exist(fullfile(dd,'TEST')) || exist(fullfile(dd,'TRAIN')))
+        if (exist(fullfile(ddt,'test')) || exist(fullfile(ddt,'train')))
+            dd=ddt;
+        else
+            error(['Directories ' fullfile(dd,'{TEST,TRAIN}') ' do not exist']);
+        end
+    end
 end
 if nargin==0 || ~numel(f)
     f='TEST/DR1/FAKS0/SA1.WAV'; % default file
@@ -50,13 +70,13 @@ end
 nag=max(nargout,4*mv);
 switch nag
     case {1,2}
-        [s,fs]=v_readsph([dd f],'wt');
+        [s,fs]=v_readsph(fullfile(dd,f),'wt');
     case {0,3}
-        [s,fs,wrd]=v_readsph([dd f],'wt');
+        [s,fs,wrd]=v_readsph(fullfile(dd,f),'wt');
     case 4
-        [s,fs,wrd,phn]=v_readsph([dd f],'wt');
+        [s,fs,wrd,phn]=v_readsph(fullfile(dd,f),'wt');
     case 5
-        [s,fs,wrd,phn]=v_readsph([dd f],'wt');
+        [s,fs,wrd,phn]=v_readsph(fullfile(dd,f),'wt');
         nw=size(wrd,1);
         if ~nw
             txt='';
