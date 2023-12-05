@@ -9,7 +9,7 @@ function [stft,meta]=stfte(s,metain,maxfft,par)
 %                                       par.offset      'none'      offset removal: {'none','mean','ends'}
 %                                       par.scale       'none'      scaling method: {'none','peakabs','rms'}
 %                                       par.pad         'none'      zero-padding method: {'none','zero','ends'}
-%                                       par.groupdelay  'none'      linear phase component: {'none','ewgd','ewgdint','cplx','cplxint','phgr','phgrint'}
+%                                       par.groupdelay  'none'      linear phase component: {'none','ewgd','ewgdint','cplx','cplxint','phgr','phgrint','gcif','gcifint'}
 %
 % Outputs: stft(nframe,maxfft)      complex STFT coefficients
 %          meta(nframe,6)           output metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay]
@@ -24,7 +24,7 @@ function [stft,meta]=stfte(s,metain,maxfft,par)
 %   par.scale       'none'      No scaling is performed so meta(:,5)=1
 %                   'peakabs'   Scale each frame so the peak absolute value equals 1
 %                   'rms'       Scale each frame so that the root-mean-square value equals 1
-%   par.pad         'none'      No padding is performed so dft-length for each fr4ame equals the frame length and meta(:,3)=meta(:,2) 
+%   par.pad         'none'      No padding is performed so dft-length for each fr4ame equals the frame length and meta(:,3)=meta(:,2)
 %                   'zero'      Pad each frame with zeros to a length of maxfft
 %                   'ends'      Padd each frame with the average of the end values to a length of maxfft
 %   par.groupdelay  'none'      No group delay compensation is performed so meta(:,6)=0 (i.e. zero samples delay)
@@ -35,6 +35,8 @@ function [stft,meta]=stfte(s,metain,maxfft,par)
 %                   'cplxint'   As above but rounded to an integer number of samples
 %                   'phgr'      Calculate the enegrgy-weighted phase decrement beween successive frequency bins in the DFT output
 %                   'phgrint'   As above but rounded to an integer number of samples
+%                   'gcif'      Take group delay equal to par.gcifrac multiplied by the frame length, meta(:,2).
+%                   'gcifint'   As above but rounded to an integer number of samples
 % Bugs/Suggestions:
 % (1) for overlapping frames could apply a window before doing the fft
 %
@@ -94,6 +96,11 @@ if strcmp(q.pad,'none')                                     % if no padding
 else                                                        % need to include padding
     meta(:,3)=maxfft;                                       % dft length equals maxfft
 end
+if isfield(par,'gcifrac')
+    gcif=par.gcifrac;
+else
+    gcif=0;
+end
 if all(framelens==framelens(1))                                % all frames are the same length so we can do them all at once
     framelen=framelens(1);                                     % constant frame length for all frames
     if strcmp(q.pad,'ends') && framelen~=maxfft              % we need to pad frames with the average of the endpoints
@@ -109,6 +116,8 @@ if all(framelens==framelens(1))                                % all frames are 
                 meta(:,6)=mod(angle(sfr(:,1:nfft).^2*exp(2i*pi*(0:nfft-1)'/nfft))*nfft/(2*pi),nfft); % calculate complex group delay for this frame
             case 'phgr'
                 meta(:,6)=angle(sum(stft(:,1:nfft-1).*conj(stft(:,2:nfft)),2)./sum(abs(stft(:,1:nfft-1).*stft(:,2:nfft)),2))*nfft/(2*pi);
+            case 'gcif'
+                meta(:,6)=meta(:,2)*gcif;
         end
         if length(q.groupdelay)>4
             meta(:,6)=round(meta(:,6));                     % round EWGD to an integer
@@ -132,6 +141,8 @@ else                                                        % we must process fr
                     meta(i,6)=mod(angle(sfr(i,1:nfft).^2*exp(2i*pi*(0:nfft-1)'/nfft))*nfft/(2*pi),nfft); % calculate complex group delay for this frame
                 case 'phgr'
                     meta(i,6)=mod(angle(stft(i,2:nfft-1)*stft(i,3:nfft)'/sum(abs(stft(i,2:nfft-1).*stft(i,3:nfft))))*nfft/(2*pi),nfft); % omit DC from calculation
+                case 'gcif'
+                    meta(i,6)=meta(i,2)*gcif;
             end
             if length(q.groupdelay)>4
                 meta(i,6)=round(meta(i,6));                 % round group delay to an integer to an integer
