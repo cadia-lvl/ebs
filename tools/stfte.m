@@ -112,7 +112,7 @@ if all(framelens==framelens(1))                                % all frames are 
         switch q.groupdelay(1:4)
             case 'ewgd'
                 meta(:,6)=sfr(:,1:nfft).^2*(0:nfft-1)'./sum(sfr(:,1:nfft).^2,2); % calculate EWGD for all frames
-            case 'cmplx'
+            case 'cplx'
                 meta(:,6)=mod(angle(sfr(:,1:nfft).^2*exp(2i*pi*(0:nfft-1)'/nfft))*nfft/(2*pi),nfft); % calculate complex group delay for this frame
             case 'phgr'
                 meta(:,6)=angle(sum(stft(:,1:nfft-1).*conj(stft(:,2:nfft)),2)./sum(abs(stft(:,1:nfft-1).*stft(:,2:nfft)),2))*nfft/(2*pi);
@@ -137,7 +137,7 @@ else                                                        % we must process fr
             switch q.groupdelay(1:4)
                 case 'ewgd'
                     meta(i,6)=sfr(i,1:nfft).^2*(0:nfft-1)'/sum(sfr(i,1:nfft).^2); % calculate EWGD for this frame
-                case 'cmplx'
+                case 'cplx'
                     meta(i,6)=mod(angle(sfr(i,1:nfft).^2*exp(2i*pi*(0:nfft-1)'/nfft))*nfft/(2*pi),nfft); % calculate complex group delay for this frame
                 case 'phgr'
                     meta(i,6)=mod(angle(stft(i,2:nfft-1)*stft(i,3:nfft)'/sum(abs(stft(i,2:nfft-1).*stft(i,3:nfft))))*nfft/(2*pi),nfft); % omit DC from calculation
