@@ -29,14 +29,13 @@ function [stft,meta]=stfte(s,metain,maxfft,par)
 %                   'ends'      Padd each frame with the average of the end values to a length of maxfft
 %   par.groupdelay  'none'      No group delay compensation is performed so meta(:,6)=0 (i.e. zero samples delay)
 %                   'ewgd'      Take group delay equal to the centre of gravity of the energy of the frame after padding
-%                   'ewgdint'   As above but rounded to an integer number of samples
 %                   'cplx'      As ewgd but convert position in frame to a complex number before doing the energy-weighted
 %                               average. This mirrors the circularity of the DFT.
-%                   'cplxint'   As above but rounded to an integer number of samples
 %                   'phgr'      Calculate the enegrgy-weighted phase decrement beween successive frequency bins in the DFT output
-%                   'phgrint'   As above but rounded to an integer number of samples
 %                   'gcif'      Take group delay equal to par.gcifrac multiplied by the frame length, meta(:,2).
-%                   'gcifint'   As above but rounded to an integer number of samples
+%                   'gpdf'      Take group delay equal to par.gpdfrac multiplied by the frame length, meta(:,2) [default=0.3].
+%                   'fmbd'      Find optimum group delay subject to bounds par.fmbound as fraction of frame length [default bounds = [0.3 0.5]].
+%                   '****int'   As above but rounded to an integer number of samples where '****' is one of the previous options
 % Bugs/Suggestions:
 % (1) for overlapping frames could apply a window before doing the fft
 %
@@ -48,7 +47,9 @@ if isempty(q0)
     q0.offset='none';                   %  offset removal: {'none','mean','ends'}
     q0.scale='none';                    %  scaling method: {'none','peakabs','rms'}
     q0.pad='none';                      % zero-padding method: {'none','zero','ends'}
-    q0.groupdelay='none';               % linear phase component: {'none','ewgd','ewgdint','cplx','cplxint'}
+    q0.groupdelay='none';               % linear phase component: {'none','ewgd','cplx','phgr','gcif','gpdf','fmbd' + optional 'int' suffix}
+    q0.gpdfrac='0.3';                   % fraction of frame length for par.groupdelay='gpdf' option
+    q0.fmbound=[0.3 0.5];               % bounds for group delay option par.groupdelay='fmbd' as fraction of frame length
 end
 %
 % update algorithm parameters
@@ -118,6 +119,12 @@ if all(framelens==framelens(1))                                % all frames are 
                 meta(:,6)=angle(sum(stft(:,1:nfft-1).*conj(stft(:,2:nfft)),2)./sum(abs(stft(:,1:nfft-1).*stft(:,2:nfft)),2))*nfft/(2*pi);
             case 'gcif'
                 meta(:,6)=meta(:,2)*gcif;
+            case 'gpdf'
+                meta(:,6)=meta(:,2)*par.gpdfrac;
+            case 'fmnb'
+                for i=1:nframe
+                    meta(i,6)=fminbnd(@(g) gderr(g,stft(i,1:nfft)),q.fmbound(1)*(framelen-1),q.fmbound(2)*(framelen-1)); % find optimum
+                end
         end
         if length(q.groupdelay)>4
             meta(:,6)=round(meta(:,6));                     % round EWGD to an integer
@@ -143,6 +150,12 @@ else                                                        % we must process fr
                     meta(i,6)=mod(angle(stft(i,2:nfft-1)*stft(i,3:nfft)'/sum(abs(stft(i,2:nfft-1).*stft(i,3:nfft))))*nfft/(2*pi),nfft); % omit DC from calculation
                 case 'gcif'
                     meta(i,6)=meta(i,2)*gcif;
+                case 'gpdf'
+                    meta(i,6)=meta(i,2)*par.gpdfrac;
+                case 'fmnb'
+                    % meta(i,6)=fminbnd(@(g) gderr(g,stft(i,1:nfft)),q.fmbound(1)*(framelen-1),q.fmbound(2)*(framelen-1)); % find optimum
+                    [xx,yy,bb]=fftgdopterr(stft(i,1:nfft));                             % initial call computes fixed quantities for optimization
+                    meta(i,6)= fminbnd(@(g) fftgdopterr(g,xx,yy,bb),q.fmbound(1)*(framelen-1),q.fmbound(2)*(framelen-1)); % find optimum
             end
             if length(q.groupdelay)>4
                 meta(i,6)=round(meta(i,6));                 % round group delay to an integer to an integer
