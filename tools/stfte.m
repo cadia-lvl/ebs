@@ -9,7 +9,7 @@ function [stft,meta]=stfte(s,metain,maxfft,par)
 %                                       par.offset      'none'      offset removal: {'none','mean','ends'}
 %                                       par.scale       'none'      scaling method: {'none','peakabs','rms'}
 %                                       par.pad         'none'      zero-padding method: {'none','zero','ends'}
-%                                       par.groupdelay  'none'      linear phase component: {'none','ewgd','ewgdint','cplx','cplxint','phgr','phgrint','gcif','gcifint'}
+%                                       par.groupdelay  'none'      linear phase component: {'none','ewgd','cplx','phgr','gcif','gpdf','fmnb' + optional 'int' suffix}
 %
 % Outputs: stft(nframe,maxfft)      complex STFT coefficients
 %          meta(nframe,6)           output metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay]
@@ -34,7 +34,7 @@ function [stft,meta]=stfte(s,metain,maxfft,par)
 %                   'phgr'      Calculate the enegrgy-weighted phase decrement beween successive frequency bins in the DFT output
 %                   'gcif'      Take group delay equal to par.gcifrac multiplied by the frame length, meta(:,2).
 %                   'gpdf'      Take group delay equal to par.gpdfrac multiplied by the frame length, meta(:,2) [default=0.3].
-%                   'fmbd'      Find optimum group delay subject to bounds par.fmbound as fraction of frame length [default bounds = [0.3 0.5]].
+%                   'fmnb'      Find optimum group delay subject to bounds par.fmbound as fraction of frame length [default bounds = [0.3 0.5]].
 %                   '****int'   As above but rounded to an integer number of samples where '****' is one of the previous options
 % Bugs/Suggestions:
 % (1) for overlapping frames could apply a window before doing the fft
@@ -47,8 +47,8 @@ if isempty(q0)
     q0.offset='none';                   %  offset removal: {'none','mean','ends'}
     q0.scale='none';                    %  scaling method: {'none','peakabs','rms'}
     q0.pad='none';                      % zero-padding method: {'none','zero','ends'}
-    q0.groupdelay='none';               % linear phase component: {'none','ewgd','cplx','phgr','gcif','gpdf','fmbd' + optional 'int' suffix}
-    q0.gpdfrac='0.3';                   % fraction of frame length for par.groupdelay='gpdf' option
+    q0.groupdelay='none';               % linear phase component: {'none','ewgd','cplx','phgr','gcif','gpdf','fmnb' + optional 'int' suffix}
+    q0.gpdfrac=0.3;                     % fraction of frame length for par.groupdelay='gpdf' option
     q0.fmbound=[0.3 0.5];               % bounds for group delay option par.groupdelay='fmbd' as fraction of frame length
 end
 %
@@ -125,6 +125,8 @@ if all(framelens==framelens(1))                                % all frames are 
                 for i=1:nframe
                     meta(i,6)=fminbnd(@(g) gderr(g,stft(i,1:nfft)),q.fmbound(1)*(framelen-1),q.fmbound(2)*(framelen-1)); % find optimum
                 end
+            otherwise
+                error(sprintf('par.goupdelay equals unknown value: %s',q.groupdelay));
         end
         if length(q.groupdelay)>4
             meta(:,6)=round(meta(:,6));                     % round EWGD to an integer
@@ -156,6 +158,8 @@ else                                                        % we must process fr
                     % meta(i,6)=fminbnd(@(g) gderr(g,stft(i,1:nfft)),q.fmbound(1)*(framelen-1),q.fmbound(2)*(framelen-1)); % find optimum
                     [xx,yy,bb]=fftgdopterr(stft(i,1:nfft));                             % initial call computes fixed quantities for optimization
                     meta(i,6)= fminbnd(@(g) fftgdopterr(g,xx,yy,bb),q.fmbound(1)*(framelen-1),q.fmbound(2)*(framelen-1)); % find optimum
+                otherwise
+                    error(sprintf('par.goupdelay equals unknown value: %s',q.groupdelay));
             end
             if length(q.groupdelay)>4
                 meta(i,6)=round(meta(i,6));                 % round group delay to an integer to an integer
@@ -177,7 +181,7 @@ if ~nargout
     subplot(2,1,2);
     imagesc(1:nframe,faxz,mod(angle(astft)'*180/pi+360/128,360)-360/128,360*[-1 127]/128);    % ensure data range is 360*[-1 127]/128
     colorbar;
-    cblabel('Phase (Deg)');
+    v_cblabel('Phase (Deg)');
     colormap(gca,rgb2);
     axis('xy');
     xlabel('Frame Num');
@@ -187,7 +191,7 @@ if ~nargout
     colorbar;
     axis('xy');
     ylabel('Freq\div{}fs');
-    cblabel('Mag (dB)');
+    v_cblabel('Mag (dB)');
     colormap(gca,rgb1);
     title(sprintf('Par:Off=%s,Scl=%s,Pad=%s,Del=%s', q.offset, q.scale, q.pad, q.groupdelay));
 end
