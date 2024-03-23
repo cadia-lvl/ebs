@@ -24,7 +24,7 @@ function [stft,meta]=stfte(s,metain,maxfft,par)
 %   par.scale       'none'      No scaling is performed so meta(:,5)=1
 %                   'peakabs'   Scale each frame so the peak absolute value equals 1
 %                   'rms'       Scale each frame so that the root-mean-square value equals 1
-%   par.pad         'none'      No padding is performed so dft-length for each fr4ame equals the frame length and meta(:,3)=meta(:,2)
+%   par.pad         'none'      No padding is performed so dft-length for each frame equals the frame length and meta(:,3)=meta(:,2)
 %                   'zero'      Pad each frame with zeros to a length of maxfft
 %                   'ends'      Padd each frame with the average of the end values to a length of maxfft
 %   par.groupdelay  'none'      No group delay compensation is performed so meta(:,6)=0 (i.e. zero samples delay)
