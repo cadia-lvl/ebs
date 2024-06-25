@@ -62,7 +62,7 @@ end
 nframe=size(metain,1);                  % number of frames
 meta=zeros(nframe,6);                   % space for metadata
 meta(:,1:2)=metain;                     % copy frame start and frame length information
-framelens=meta(:,2);                     % length of each frame in samples
+framelens=meta(:,2);                    % length of each frame in samples
 if nargin<3 || isempty(maxfft)
     maxfft=max(framelens);              % set maxfft to maximum frame length
 else
@@ -162,7 +162,7 @@ else                                                        % we must process fr
                     error(sprintf('par.goupdelay equals unknown value: %s',q.groupdelay));
             end
             if length(q.groupdelay)>4
-                meta(i,6)=round(meta(i,6));                 % round group delay to an integer to an integer
+                meta(i,6)=round(meta(i,6));                 % round group delay to an integer
             end
             stft(i,1:nfft)=stft(i,1:nfft).*exp(2i*pi/nfft*meta(i,6)*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1]); % apply group delay (except to Nyquist frequency)
         end
