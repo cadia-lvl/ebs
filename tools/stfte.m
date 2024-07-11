@@ -24,6 +24,8 @@ function [stft,meta]=stfte(s,metain,maxfft,par)
 %   par.scale       'none'      No scaling is performed so meta(:,5)=1
 %                   'peakabs'   Scale each frame so the peak absolute value equals 1
 %                   'rms'       Scale each frame so that the root-mean-square value equals 1
+%                   'len'       Scale each frame by its unpadded length (total spectral energy = average energy per sample)
+%                   'sqlen'     Scale each frame by the square root of its unpadded length (total spectral energy = total sample energy)
 %   par.pad         'none'      No padding is performed so dft-length for each frame equals the frame length and meta(:,3)=meta(:,2)
 %                   'zero'      Pad each frame with zeros to a length of maxfft
 %                   'ends'      Padd each frame with the average of the end values to a length of maxfft
@@ -45,7 +47,7 @@ persistent q0
 %
 if isempty(q0)
     q0.offset='none';                   %  offset removal: {'none','mean','ends'}
-    q0.scale='none';                    %  scaling method: {'none','peakabs','rms'}
+    q0.scale='none';                    %  scaling method: {'none','peakabs','rms','len','sqlen'}
     q0.pad='none';                      % zero-padding method: {'none','zero','ends'}
     q0.groupdelay='none';               % linear phase component: {'none','ewgd','cplx','phgr','gcif','gpdf','fmnb' + optional 'int' suffix}
     q0.gpdfrac=0.3;                     % fraction of frame length for par.groupdelay='gpdf' option
@@ -84,10 +86,16 @@ switch q.offset
         sfr(sfrmk)=sfr(sfrmk)-sfrrep(sfrmk);                            % subtract mean from valid samples
 end
 if strcmp(q.scale,'rms')
-    meta(:,5)=sqrt(sum(sfr.^2,2)./meta(:,2));               % find rms
+    meta(:,5)=sqrt(sum(sfr.^2,2)./meta(:,2));               % find rms in each frame
     sfr=sfr./repmat(meta(:,5)+(meta(:,5)==0),1,maxfft);     % scale the data (except when scale factor is zero)
 elseif strcmp(q.scale,'peakabs')
     meta(:,5)=max(abs(sfr),[],2);                           % find max of abs(sfr)) in each frame
+    sfr=sfr./repmat(meta(:,5)+(meta(:,5)==0),1,maxfft);     % scale the data (except when scale factor is zero)
+elseif strcmp(q.scale,'sqlen')
+    meta(:,5)=sqrt(meta(:,2));                              % scale by the square root of the frame length
+    sfr=sfr./repmat(meta(:,5)+(meta(:,5)==0),1,maxfft);     % scale the data (except when scale factor is zero)
+elseif strcmp(q.scale,'len')
+    meta(:,5)=meta(:,2);                                    % scale by the frame length
     sfr=sfr./repmat(meta(:,5)+(meta(:,5)==0),1,maxfft);     % scale the data (except when scale factor is zero)
 else
     meta(:,5)=1;                                            % default scale factor is unity
