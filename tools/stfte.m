@@ -25,7 +25,7 @@ function [stft,meta]=stfte(s,metain,maxfft,par)
 %                   'peakabs'   Scale each frame so the peak absolute value equals 1
 %                   'rms'       Scale each frame so that the root-mean-square value equals 1
 %                   'len'       Scale each frame by its unpadded length (total spectral energy = average energy per sample)
-%                   'sqlen'     Scale each frame by the square root of its unpadded length (total spectral energy = total sample energy)
+%                   'sqlen'     Scale each frame by the square root of its unpadded length (average spectral energy = average energy per sample)
 %   par.pad         'none'      No padding is performed so dft-length for each frame equals the frame length and meta(:,3)=meta(:,2)
 %                   'zero'      Pad each frame with zeros to a length of maxfft
 %                   'ends'      Padd each frame with the average of the end values to a length of maxfft
