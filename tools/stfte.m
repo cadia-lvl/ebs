@@ -112,9 +112,9 @@ if isfield(par,'gcifrac')
 else
     gcif=0;
 end
-if all(framelens==framelens(1))                                % all frames are the same length so we can do them all at once
-    framelen=framelens(1);                                     % constant frame length for all frames
-    if strcmp(q.pad,'ends') && framelen~=maxfft              % we need to pad frames with the average of the endpoints
+if all(framelens==framelens(1))                             % all frames are the same length so we can do them all at once
+    framelen=framelens(1);                                  % constant frame length for all frames
+    if strcmp(q.pad,'ends') && framelen~=maxfft             % we need to pad frames with the average of the endpoints
         sfr(:,framelen+1:maxfft)=repmat(sfr(:,[1 framelen])*[0.5;0.5],1,maxfft-framelen);   % pad with average of endpoints
     end
     nfft=meta(1,3);                                         % DFT length of all frames
@@ -143,16 +143,16 @@ if all(framelens==framelens(1))                                % all frames are 
         end
         stft(:,1:nfft)=stft(:,1:nfft).*exp(2i*pi/nfft*meta(:,6)*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1]); % apply group delay (except to Nyquist frequency)
     end
-    if nargout>2 % need to calculate group delay also
-        stfta=angle(stft(:,1:nfft));                                                                  % calculate phases
-        previx=[nfft 1:nfft-1]; % index of previous element of frame
-        difa=v_modsym(stfta-stfta(:,previx),2*pi);     % phase increment in range +-pi
-        grpd(:,previx)=(difa(:,previx)+difa)*(framelen/(-4*pi));  % add phase increment for adjacent frequency bins and convert into group delay of samples
+    if nargout>2                                            % need to calculate group delay also
+        stfta=angle(stft(:,1:nfft));                        % calculate phases
+        previx=[nfft 1:nfft-1];                             % index of previous element of frame
+        difa=v_modsym(stfta-stfta(:,previx),2*pi);          % phase increment in range +-pi
+        grpd(:,previx)=(difa(:,previx)+difa)*(framelen/(-4*pi));    % add phase increment for adjacent frequency bins and convert into group delay of samples
     end
 else                                                        % we must process frames individually 'cos varying lengths
     framelen=-1;                                            % initialize to invalid frame length (used to avoid recalculating window unnecessarily)
     for i=1:nframe
-        framelen=framelens(i);                                 % length of this frame in samples
+        framelen=framelens(i);                              % length of this frame in samples
         if strcmp(q.pad,'ends') && framelen~=maxfft
             sfr(i,framelen+1:maxfft)=repmat(sfr(i,[1 framelen])*[0.5;0.5],1,maxfft-framelen); % pad with average of endpoints
         end
@@ -182,10 +182,10 @@ else                                                        % we must process fr
             end
             stft(i,1:nfft)=stft(i,1:nfft).*exp(2i*pi/nfft*meta(i,6)*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1]); % apply group delay (except to Nyquist frequency)
         end
-        stfta=angle(stft(i,1:nfft));                                                                  % calculate phases
-        previx=[nfft 1:nfft-1]; % index of previous element of frame
-        difa=v_modsym(stfta-stfta(previx),2*pi);     % phase increment in range +-pi
-        grpd(i,previx)=(difa(previx)+difa)*(framelen/(-4*pi));  % add phase increment for adjacent frequency bins and convert into group delay of samples
+        stfta=angle(stft(i,1:nfft));                        % calculate phases
+        previx=[nfft 1:nfft-1];                             % index of previous element of frame
+        difa=v_modsym(stfta-stfta(previx),2*pi);            % phase increment in range +-pi
+        grpd(i,previx)=(difa(previx)+difa)*(framelen/(-4*pi));      % add phase increment for adjacent frequency bins and convert into group delay of samples
     end
 end
 if ~nargout
@@ -193,7 +193,7 @@ if ~nargout
     rgb2=v_colormap('v_circrby','k');                       % get colormap for phase
     nfftp=1+floor(maxfft/2);                                % number of positive frequencies
     faxz=(0:nfftp-1)/maxfft;                                % frequency axis for spectrogram
-    astft=zeros(nframe,nfftp);                      % space for the interpolated stft
+    astft=zeros(nframe,nfftp);                              % space for the interpolated stft
     for i=1:nframe
         astft(i,:)=stft(i,1+round((0:nfftp-1)*meta(i,3)/maxfft));      % interpolate to fill astft by replicating
     end
