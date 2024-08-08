@@ -1,4 +1,4 @@
-function [stft,meta]=stfte(s,metain,maxfft,par)
+function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 % Epoch-based stft
 %
 %  Inputs: s(ns,1)                  real-valued signal
@@ -13,6 +13,7 @@ function [stft,meta]=stfte(s,metain,maxfft,par)
 %
 % Outputs: stft(nframe,maxfft)      complex STFT coefficients
 %          meta(nframe,6)           output metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay]
+%          grpd(nframe,maxfft)      group delay in samples
 %
 % Transformations are applied in the order offset, scale, pad, dft, groupdelay. If pad option is 'ends', the group delay can exceed the length of the unpadded frame.
 %
@@ -72,6 +73,7 @@ else
 end
 sfr=zeros(nframe,maxfft);                                       % space for frames (one per row)
 stft=NaN(nframe,maxfft);                                        % space for stft; unused entries will be left as NaN
+grpd=NaN(nframe,maxfft);                                        % space for group delay; unused entries will be left as NaN
 sfrix=repmat(0:maxfft-1,nframe,1)+repmat(meta(:,1),1,maxfft);   % index into s for frame samples
 sfrmk=repmat(1:maxfft,nframe,1)<=repmat(meta(:,2),1,maxfft);    % mask for valid values
 sfr(sfrmk)=s(sfrix(sfrmk));                                     % enframe the data
@@ -141,6 +143,12 @@ if all(framelens==framelens(1))                                % all frames are 
         end
         stft(:,1:nfft)=stft(:,1:nfft).*exp(2i*pi/nfft*meta(:,6)*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1]); % apply group delay (except to Nyquist frequency)
     end
+    if nargout>2 % need to calculate group delay also
+        stfta=angle(stft(:,1:nfft));                                                                  % calculate phases
+        previx=[nfft 1:nfft-1]; % index of previous element of frame
+        difa=v_modsym(stfta-stfta(:,previx),2*pi);     % phase increment in range +-pi
+        grpd(:,previx)=(difa(:,previx)+difa)*(framelen/(-4*pi));  % add phase increment for adjacent frequency bins and convert into group delay of samples
+    end
 else                                                        % we must process frames individually 'cos varying lengths
     framelen=-1;                                            % initialize to invalid frame length (used to avoid recalculating window unnecessarily)
     for i=1:nframe
@@ -174,6 +182,10 @@ else                                                        % we must process fr
             end
             stft(i,1:nfft)=stft(i,1:nfft).*exp(2i*pi/nfft*meta(i,6)*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1]); % apply group delay (except to Nyquist frequency)
         end
+        stfta=angle(stft(i,1:nfft));                                                                  % calculate phases
+        previx=[nfft 1:nfft-1]; % index of previous element of frame
+        difa=v_modsym(stfta-stfta(previx),2*pi);     % phase increment in range +-pi
+        grpd(i,previx)=(difa(previx)+difa)*(framelen/(-4*pi));  % add phase increment for adjacent frequency bins and convert into group delay of samples
     end
 end
 if ~nargout
