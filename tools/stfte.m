@@ -13,7 +13,7 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %
 % Outputs: stft(nframe,maxfft)      complex STFT coefficients
 %          meta(nframe,6)           output metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay]
-%          grpd(nframe,maxfft)      group delay in samples
+%          grpd(nframe,maxfft)      group delay in samples. This is calculated from the slope of a quadratic fitted to three consecutive points along the frequency axis.
 %
 % Transformations are applied in the order offset, scale, pad, dft, groupdelay. If pad option is 'ends', the group delay can exceed the length of the unpadded frame.
 %
