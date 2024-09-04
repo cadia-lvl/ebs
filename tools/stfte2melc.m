@@ -4,7 +4,7 @@ function [melbm,melbu,cfhz,mbm]=stfte2melc(stft,fs,nmel,par)
 %          nmel                     number of mel filters (including DC channel if requested by par.keepDC=1)
 %          par                      parameter structure containing optional parameters
 %                                       par.keepDC      preserve DC as the lowest MEL bin {0, 1} [1]
-%                                       par.MELphase    MEL STFT phase calculation: {'true','zero','linear','piecewiselin'} ['piecewiselin']
+%                                       par.MELphase    MEL STFT phase calculation: {'true','zero','linear','piecewiselin','grpdel'} ['piecewiselin']
 %                                       par.MELdom      MEL filterbank domain: {'mag', 'pow'} ['pow']
 %                                       par.regwt       regularizing factor for phase weights when par.MELphase='piecewiselin' [0.01]
 %                                       par.loops       maximum number of iterations when par.MELphase='piecewiselin' [5]
@@ -20,6 +20,7 @@ function [melbm,melbu,cfhz,mbm]=stfte2melc(stft,fs,nmel,par)
 % Bugs/suggestions:
 % (1) should make filterbank peaks always equal 1 or 2 regardless of algorithm
 % (2) could conceivably make it cope with non-hermitian stft (from a complex signal)
+% (3) par.MELphase='grpdel' might not work with par.keepDC=1 option + doesn't really handle DC right anyway
 persistent q0
 %
 % define default parameters
@@ -57,8 +58,7 @@ for it=1:nt                                                             % loop f
     %
     % calculate useful functions of the input stft
     %
-    stftp=stft(it,1:nfftp).';                                             %  input stft for this frame (+ve frequencies only)
-    sdfta=angle(stftp);                                                 % phase of stft(1,freq) (+ve frequencies only)
+    stftp=stft(it,1:nfftp).';                                             %  input stft for this frame (+ve frequencies only)   
     if newnfft                                                          % check if need to recalculate mbm
         %
         % calculate data-independent quantities that depend on nfft
@@ -79,6 +79,7 @@ for it=1:nt                                                             % loop f
         angs=2*pi/nfft*(1-nfftp:nfft-nfftp)'*(0:nfftp-1);           % linear phase angles, (nfft,nfftp). The entry angs(k,:) has group delay of nfftp-k samples
         angsc=cos(angs);                                            % cos of linear phase angles
         angss=sin(angs);                                            % sin of linear phase angles
+        previx=[nfft 1:nfft-1];                                     % index of previous element of frame for group delay calculation
     end
     if strcmpi(q.MELdom,'pow')                                      % check MEL filterbank domain
         melbm(it,:)=sqrt(mbm*abs(stftp).^2);                        % MEL filterbank magnitude spectrum in 'pow' dommain
@@ -92,8 +93,15 @@ for it=1:nt                                                             % loop f
         melbu(it,:)=angle(stft(it,:));                              % preserve entire true phase spectrum
     elseif strcmpi(q.MELphase,'zero')
         if q.keepDC                                                 % if mel spectrum includes a DC term ...
-            melbu(it,1)=sdfta(1);                                % make DC phase correct (i.e. 0 or +pi)
+            melbu(it,1)=angle(stftp(1));                            % make DC phase correct (i.e. 0 or +pi)
         end
+    elseif strcmpi(q.MELphase,'grpdel')                             % output group delay in seconds
+        sdfta=angle(stft(it,1:nfft));                               % phase of stft(1,freq)
+        sdfta(1)=0; % zap DC phase
+        difa=v_modsym(sdfta-sdfta(previx),2*pi);                    % phase increment in range +-pi
+        grpd=zeros(1,nfft);
+        grpd(previx)=(difa(previx)+difa)*(nfft/(-4*pi*fs));         % add phase increment for adjacent frequency bins and convert into group delay of seconds
+        melbu(it,:)=mbm*grpd(1:nfftp)';
     else
         %************************************************************************************************************
         % Phase cost function:                                                                                      *
@@ -112,6 +120,7 @@ for it=1:nt                                                             % loop f
         %
         % first do an exhaustive search for a linear phase solution
         %
+        sdfta=angle(stftp);                                                 % phase of stft(1,freq) (+ve frequencies only)
         stftm2=abs(stftp).^2;                                   % stft power for use in the phase-error cost function
         sdftac=cos(sdfta);                                      % cos of true phase angles
         sdftas=sin(sdfta);                                      % sin of true phase angles
