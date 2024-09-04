@@ -15,7 +15,7 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %          meta(nframe,6)           output metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay]
 %          grpd(nframe,maxfft)      group delay in samples. This is calculated from the slope of a quadratic fitted to three consecutive points along the frequency axis.
 %
-% Transformations are applied in the order offset, scale, pad, dft, groupdelay. If pad option is 'ends', the group delay can exceed the length of the unpadded frame.
+% Transformations are applied in the order window, offset, scale, pad, dft, groupdelay. If pad option is 'ends', the group delay can exceed the length of the unpadded frame.
 %
 % Algorithm Options:
 %
@@ -41,6 +41,8 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %                   '****int'   As above but rounded to an integer number of samples where '****' is one of the previous options
 % Bugs/Suggestions:
 % (1) for overlapping frames could apply a window before doing the fft
+% (2) Group delay calculation could possibly include the option of a phase shift of pi in consecutive
+%     frequency bins due to magnitude sign change (especially at DC and Nyquist frequency).
 %
 persistent q0
 %
@@ -53,6 +55,7 @@ if isempty(q0)
     q0.groupdelay='none';               % linear phase component: {'none','ewgd','cplx','phgr','gcif','gpdf','fmnb' + optional 'int' suffix}
     q0.gpdfrac=0.3;                     % fraction of frame length for par.groupdelay='gpdf' option
     q0.fmbound=[0.3 0.5];               % bounds for group delay option par.groupdelay='fmbd' as fraction of frame length
+    q0.window='r';                      % window: 'r'=rectangular, 'n'=hanning, 'm'=hamming
 end
 %
 % update algorithm parameters
@@ -77,6 +80,11 @@ grpd=NaN(nframe,maxfft);                                        % space for grou
 sfrix=repmat(0:maxfft-1,nframe,1)+repmat(meta(:,1),1,maxfft);   % index into s for frame samples
 sfrmk=repmat(1:maxfft,nframe,1)<=repmat(meta(:,2),1,maxfft);    % mask for valid values
 sfr(sfrmk)=s(sfrix(sfrmk));                                     % enframe the data
+if q.window~='r'
+    for i=1:nframe % loop through frames (could vectorize for simple windows)
+        sfr(i,1:meta(i,2))=sfr(i,1:meta(i,2)).*v_windows(q.window,meta(i,2),'l')
+    end
+end
 switch q.offset
     case 'mean'
         meta(:,4)=sum(sfr,2)./meta(:,2);                                % find mean of each frame
