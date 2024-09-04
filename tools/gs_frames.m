@@ -1,18 +1,19 @@
 function [framek,gci]=gs_frames(s,fs,pardb)
 % Divide speech signal into pitch-synchronous frames
 %
-%  Inputs:      s       Speech signal
-%              fs       Sample Frequency
-%               pardb (optional)    
-%                         .pitchlim   {min target max} pitch (Hz)
-%                         .gcifrac    position of GCI in analysis frame
-%                         .GCImethod  either 'YAGA' (default) or SEDREAMS
+%  Inputs:      s   Speech signal
+%              fs   Sample Frequency
+%           pardb   optional structure giving procesing options:    
+%                       .pitchlim       vector with [min target max] pitch (Hz)
+%                       .gcifrac        position of GCI in analysis frame
+%                       .GCImethod      either 'YAGA' (default) or 'SEDREAMS'
 %
 % Outputs: framek   Vector containng the index of the last sample in each frame
-%           gci     Glottal Closure Instants
+%             gci   Glottal Closure Instants (dummy GCIs are inserted if necessary to make spacing <= 1/min-pitch)
 %
-% This routine uses pitch_srh and gci_sedreams from covarep. Note that after installing covarep,
-% you must remove its version of voicebox from the MATLAB path (because it is out-of-date).
+% If the GCI option pardb.GCImethod='SEDREAMS' is selected, this routine uses pitch_srh and
+% gci_sedreams from covarep. Note that after installing covarep, you must remove its version
+% of voicebox from the MATLAB path (because it is out-of-date).
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   algorithm Parameters
