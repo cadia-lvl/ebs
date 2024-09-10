@@ -21,6 +21,7 @@ function [melbm,melbu,cfhz,mbm]=stfte2melc(stft,fs,nmel,par)
 % (1) should make filterbank peaks always equal 1 or 2 regardless of algorithm
 % (2) could conceivably make it cope with non-hermitian stft (from a complex signal)
 % (3) par.MELphase='grpdel' might not work with par.keepDC=1 option + doesn't really handle DC right anyway
+% (4) should maybe use meta() input instead of calculating the DFT length directly
 persistent q0
 %
 % define default parameters
@@ -50,9 +51,9 @@ if strcmpi(q.MELphase,'true')
 else
     melbu=zeros(nt,nmel);   % space for mel unwrapped phase spectrum
 end
-nfftprev=-1;                                                            % initialize previous nfft
+nfftprev=-1;                                                            % initialize previous nfft to an impossible value
 for it=1:nt                                                             % loop for all time frames
-    nfft=sum(~isnan(stft(it,:)),2);                                     % FFT length for thisframe
+    nfft=sum(~isnan(stft(it,:)),2);                                     % FFT length for this frame
     newnfft=nfft~=nfftprev;                                             % nfft has changed
     nfftp=1+floor(nfft/2);                                              % number of positive FFT frequency bins
     %

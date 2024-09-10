@@ -9,7 +9,7 @@ function [sdftr, sdftm]=melAndReconstruct(sdft,fs,nfft,nfftp,numMelFilters,fbank
 %                               into sdftr.  Otherwise, estimated DC values are used 
 %
 % Outputs: sdftr(nfft,nframe)  Reconstructed complex STFT
-%          sdftm(numMelFilters,nframe) Real-valued Mel fiolterbank outputs
+%          sdftm(numMelFilters,nframe) Real-valued Mel filterbank outputs
 
 if nargin < 7
     preserveDC = 0;

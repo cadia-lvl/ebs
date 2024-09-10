@@ -4,7 +4,7 @@ function stft=melc2stfte(melbm,melbu,fs,meta,par)
 %          melbu(nframes,nmel)     Real-valued Mel filterbank unwrapped phase angles
 %                                       If par.MELphase='true' then melbu=angle(stft) with dimension (nfft,nframes).
 %          cfbin(nmel)               Mel-bin centre frequencies in units of fft bins (0=DC)
-%          mbm(nmel,nfftp)          Sparse transformation matrix: melbm=mbm*abs(stft(1:nfftp,:).^2) where nfftp=1+floor(nfft/2)
+%          fs                       Sample frequency
 %           meta(nframes,6)         We only use meta(:,3) which is the fft length
 %          par                      parameter structure containing optional parameters
 %                                       par.keepDC      preserve DC as the lowest MEL bin {0, 1} [1]

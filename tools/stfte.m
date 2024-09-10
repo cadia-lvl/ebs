@@ -19,18 +19,21 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %
 % Algorithm Options:
 %
-%   par.offset      'none'      No offset-removal is performed so meta(:,4)=0
+%   par.window      'r'         Rectangular [default]
+%                   'n'         Hanning window applied before offset/scale/pad operations
+%                   'm'         Hamming window applied before offset/scale/pad operations
+%   par.offset      'none'      No offset-removal is performed so meta(:,4)=0 [default]
 %                   'mean'      The mean of each frame is subtracted from the frame
 %                   'ends'      The average of the first and last samples in each frame is subtracted from the frame
-%   par.scale       'none'      No scaling is performed so meta(:,5)=1
+%   par.scale       'none'      No scaling is performed so meta(:,5)=1 [default]
 %                   'peakabs'   Scale each frame so the peak absolute value equals 1
 %                   'rms'       Scale each frame so that the root-mean-square value equals 1
 %                   'len'       Scale each frame by its unpadded length (total spectral energy = average energy per sample)
 %                   'sqlen'     Scale each frame by the square root of its unpadded length (average spectral energy = average energy per sample)
-%   par.pad         'none'      No padding is performed so dft-length for each frame equals the frame length and meta(:,3)=meta(:,2)
+%   par.pad         'none'      No padding is performed so dft-length for each frame equals the frame length and meta(:,3)=meta(:,2) [default]
 %                   'zero'      Pad each frame with zeros to a length of maxfft
 %                   'ends'      Padd each frame with the average of the end values to a length of maxfft
-%   par.groupdelay  'none'      No group delay compensation is performed so meta(:,6)=0 (i.e. zero samples delay)
+%   par.groupdelay  'none'      No group delay compensation is performed so meta(:,6)=0 (i.e. zero samples delay) [default]
 %                   'ewgd'      Take group delay equal to the centre of gravity of the energy of the frame after padding
 %                   'cplx'      As ewgd but convert position in frame to a complex number before doing the energy-weighted
 %                               average. This mirrors the circularity of the DFT.
@@ -39,9 +42,10 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %                   'gpdf'      Take group delay equal to par.gpdfrac multiplied by the frame length, meta(:,2) [default=0.3].
 %                   'fmnb'      Find optimum group delay subject to bounds par.fmbound as fraction of frame length [default bounds = [0.3 0.5]].
 %                   '****int'   As above but rounded to an integer number of samples where '****' is one of the previous options
+%   par.fmbound                 Group delay bounds as fraction of frame length when using par.groupdelay='fmnb' option [default = [0.3 0.5]]
+%
 % Bugs/Suggestions:
-% (1) for overlapping frames could apply a window before doing the fft
-% (2) Group delay calculation could possibly include the option of a phase shift of pi in consecutive
+% (1) Group delay calculation could possibly include the option of a phase shift of pi in consecutive
 %     frequency bins due to magnitude sign change (especially at DC and Nyquist frequency).
 %
 persistent q0
