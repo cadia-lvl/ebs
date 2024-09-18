@@ -6,6 +6,7 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %          maxfft                   max size of frame in stft domain [default: max(metain(:,2))]
 %          par                      parameter structure containing optional parameters
 %                                       =Parameter=     =Default=   =Description=
+%                                       par.window      'r'         Window: {'r','n','m'} = {Rectangular, Hanning, Hamming}
 %                                       par.offset      'none'      offset removal: {'none','mean','ends'}
 %                                       par.scale       'none'      scaling method: {'none','peakabs','rms'}
 %                                       par.pad         'none'      zero-padding method: {'none','zero','ends'}
@@ -22,6 +23,7 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %   par.window      'r'         Rectangular [default]
 %                   'n'         Hanning window applied before offset/scale/pad operations
 %                   'm'         Hamming window applied before offset/scale/pad operations
+%   par.windowmode  'E'         window mode (see v_windows.m)
 %   par.offset      'none'      No offset-removal is performed so meta(:,4)=0 [default]
 %                   'mean'      The mean of each frame is subtracted from the frame
 %                   'ends'      The average of the first and last samples in each frame is subtracted from the frame
@@ -60,6 +62,7 @@ if isempty(q0)
     q0.gpdfrac=0.3;                     % fraction of frame length for par.groupdelay='gpdf' option
     q0.fmbound=[0.3 0.5];               % bounds for group delay option par.groupdelay='fmbd' as fraction of frame length
     q0.window='r';                      % window: 'r'=rectangular, 'n'=hanning, 'm'=hamming
+    q0.windowmode='E';                  % window mode (see v_windows.m)
 end
 %
 % update algorithm parameters
@@ -86,7 +89,7 @@ sfrmk=repmat(1:maxfft,nframe,1)<=repmat(meta(:,2),1,maxfft);    % mask for valid
 sfr(sfrmk)=s(sfrix(sfrmk));                                     % enframe the data
 if q.window~='r'
     for i=1:nframe % loop through frames (could vectorize for simple windows)
-        sfr(i,1:meta(i,2))=sfr(i,1:meta(i,2)).*v_windows(q.window,meta(i,2),'l')
+        sfr(i,1:meta(i,2))=sfr(i,1:meta(i,2)).*v_windows(q.window,meta(i,2),q.windowmode);
     end
 end
 switch q.offset
@@ -162,7 +165,6 @@ if all(framelens==framelens(1))                             % all frames are the
         grpd(:,previx)=(difa(:,previx)+difa)*(framelen/(-4*pi));    % add phase increment for adjacent frequency bins and convert into group delay of samples
     end
 else                                                        % we must process frames individually 'cos varying lengths
-    framelen=-1;                                            % initialize to invalid frame length (used to avoid recalculating window unnecessarily)
     for i=1:nframe
         framelen=framelens(i);                              % length of this frame in samples
         if strcmp(q.pad,'ends') && framelen~=maxfft
