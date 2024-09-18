@@ -9,7 +9,7 @@ function [framek,gci]=gs_frames(s,fs,pardb)
 %                       .GCImethod      either 'YAGA' (default) or 'SEDREAMS'
 %
 % Outputs: framek   Vector containng the index of the last sample in each frame
-%             gci   Glottal Closure Instants (dummy GCIs are inserted if necessary to make spacing <= 1/min-pitch)
+%             gci   Glottal Closure Instants (seconds, origin @ s(1)) (dummy GCIs are inserted if necessary to make spacing <= 1/min-pitch)
 %
 % If the GCI option pardb.GCImethod='SEDREAMS' is selected, this routine uses pitch_srh and
 % gci_sedreams from covarep. Note that after installing covarep, you must remove its version
