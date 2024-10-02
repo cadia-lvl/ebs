@@ -3,6 +3,7 @@ function [melbm,melbu,cfhz,mbm]=stfte2melc(stft,fs,nmel,par)
 %          fs                       sample frequency
 %          nmel                     number of mel filters (including DC channel if requested by par.keepDC=1)
 %          par                      parameter structure containing optional parameters
+%                                       par.fbank=      filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel} ['m']
 %                                       par.keepDC      preserve DC as the lowest MEL bin {0, 1} [1]
 %                                       par.MELphase    MEL STFT phase calculation: {'true','zero','linear','piecewiselin','grpdel'} ['piecewiselin']
 %                                       par.MELdom      MEL filterbank domain: {'mag', 'pow'} ['pow']
@@ -22,6 +23,7 @@ function [melbm,melbu,cfhz,mbm]=stfte2melc(stft,fs,nmel,par)
 % (2) could conceivably make it cope with non-hermitian stft (from a complex signal)
 % (3) par.MELphase='grpdel' might not work with par.keepDC=1 option + doesn't really handle DC right anyway
 % (4) should maybe use meta() input instead of calculating the DFT length directly
+% (5) should use the [newish] 'zq' option of v_filtbankm to deal with the q.keepDC option
 persistent q0
 %
 % define default parameters
@@ -30,9 +32,10 @@ if isempty(q0)
     q0.keepDC=1;                    % preserve DC as the lowest STFT; 0 or 1
     q0.MELphase='piecewiselin';     % MEL STFT phase reconstruction: 'true','zero','linear','piecewiselin'
     q0.MELdom='pow';                % MEL filterbank domain: 'mag', 'pow'
-    q0.regwt=0.01;                 % regularizing factor for weights (only for par.MELphase='piecewiselin')
+    q0.regwt=0.01;                  % regularizing factor for weights (only for par.MELphase='piecewiselin')
     q0.loops=5;                     % maximum number of iterations (only for par.MELphase='piecewiselin')
     q0.ssqthr=1.00;                 % stopping threshold (only for par.MELphase='piecewiselin')
+    q0.fbank='m';                   % filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel}
 end
 %
 % update algorithm parameters
@@ -40,6 +43,11 @@ if nargin>=4
     q=v_paramsetch(q0,par);             % update parameters from pp input
 else
     q=q0;                           % just copy default parameters
+end
+if q.keepDC
+    fbopt=[q.fbank 'zqdD']; % filterbank option includes DC output
+else
+    fbopt=[q.fbank 'dD'];  % filterbank option omits DC output
 end
 %
 % Calculate the mel spectrum
@@ -59,23 +67,18 @@ for it=1:nt                                                             % loop f
     %
     % calculate useful functions of the input stft
     %
-    stftp=stft(it,1:nfftp).';                                             %  input stft for this frame (+ve frequencies only)   
+    stftp=stft(it,1:nfftp).';                                           %  input stft for this frame (+ve frequencies only)
     if newnfft                                                          % check if need to recalculate mbm
         %
         % calculate data-independent quantities that depend on nfft
         %
-        [mbm,cfhz]=v_filtbankm(nmel-q.keepDC,nfft,fs,0,fs/2,'m');
+        [mbm,cfhz]=v_filtbankm(nmel,nfft,fs,0,fs/2,fbopt);
         mbm=diag(sum(mbm,2).^(-1))*mbm;                             % normalize so that rows sum to 1 to create an interpolation matrix
-        if q.keepDC                                                 % add extra STFT bin if KEEPdc=1
-            mbm(:,1)=0;                                             % eliminate references to DC FFT bin
-            mbm=vertcat(sparse(1,1,1,1,nfftp),mbm);                 % preappend an extra row to preserve the DC value
-            cfhz=[0 cfhz];                                          % pre-append a centre-frequency for DC
-        end
-        cfbin=cfhz*nfft/fs;                                             % MEL centre frequencies in fft bin units (0=dc)
-        phlin=lininterps(cfbin,0:nfftp-1,'E');              % linear interpolation matrix for phases (nfftp,nmel)
-        if q.keepDC                                         % if mel spectrum includes a DC term ...
-            phlin(:,1)=0;                                   % ... don't use DC phase for other bins
-            phlin(1,1)=1;                                   % ... except for the DC phase itself
+        cfbin=cfhz*nfft/fs;                                         % MEL centre frequencies in fft bin units (0=dc)
+        phlin=lininterps(cfbin,0:nfftp-1,'E');                      % linear interpolation matrix for phases (nfftp,nmel)
+        if q.keepDC                                                 % if mel spectrum includes a DC term ...
+            phlin(:,1)=0;                                           % ... don't use DC phase for other bins
+            phlin(1,1)=1;                                           % ... except for the DC phase itself
         end
         angs=2*pi/nfft*(1-nfftp:nfft-nfftp)'*(0:nfftp-1);           % linear phase angles, (nfft,nfftp). The entry angs(k,:) has group delay of nfftp-k samples
         angsc=cos(angs);                                            % cos of linear phase angles
@@ -103,7 +106,7 @@ for it=1:nt                                                             % loop f
         grpd=zeros(1,nfft);
         grpd(previx)=(difa(previx)+difa)*(nfft/(-4*pi*fs));         % add phase increment for adjacent frequency bins and convert into group delay of seconds
         melbu(it,:)=mbm*grpd(1:nfftp)';
-    else
+    else                                                            % par.MELphase='linear' or'piecewiselin'
         %************************************************************************************************************
         % Phase cost function:                                                                                      *
         %                                                                                                           *
@@ -117,54 +120,55 @@ for it=1:nt                                                             % loop f
         %     (xm.*ym)'*cos(xa-ya) = (xm.*ym)'*(cos(xa).*cos(ya)+sin(xa).*sin(ya))                                  *
         %                          = (xm.*ym.*cos(xa))'*cos(ya)+(xm.*ym.*sin(xa))'*sin(ya)                          *
         % We approximate xm.*ym by xm.^2 to avoid the phase dependency on the magnitude reconstruction algorithm    *
+        % We can also approximate cos(xa-ya)~1-0.5(xa-ya).^2 giving a minimization target (xm.*(xa-ya)).^2          *
         %************************************************************************************************************
         %
         % first do an exhaustive search for a linear phase solution
         %
-        sdfta=angle(stftp);                                                 % phase of stft(1,freq) (+ve frequencies only)
-        stftm2=abs(stftp).^2;                                   % stft power for use in the phase-error cost function
-        sdftac=cos(sdfta);                                      % cos of true phase angles
-        sdftas=sin(sdfta);                                      % sin of true phase angles
-        powre=angsc*(stftm2.*sdftac)+angss*(stftm2.*sdftas);    % negative error power (GroupDelay,1)
-        [optp,optd]=max(powre);                                 % find optimum group delay in this frame
+        sdfta=angle(stftp);                                         % phase of stft(1,freq) (+ve frequencies only)
+        stftm2=abs(stftp).^2;                                       % stft power for use in the phase-error cost function
+        sdftac=cos(sdfta);                                          % cos of true phase angles
+        sdftas=sin(sdfta);                                          % sin of true phase angles
+        powre=angsc*(stftm2.*sdftac)+angss*(stftm2.*sdftas);        % negative error power (GroupDelay,1)
+        [optp,optd]=max(powre);                                     % find optimum group delay in this frame
         % angs=2*pi/nfft*(1-nfftp:nfft-nfftp)'*(0:nfftp-1);
-        melbu(it,:)=2*pi/nfft*cfbin'*(optd-nfftp);              % calculate linear phases at the MEL centre frequencies to match angs(optd,:) entries
-        if q.keepDC                                             % if mel spectrum includes a DC term ...
-            melbu(it,1)=sdfta(1);                               % make DC phase correct (i.e. 0 or +pi)
+        melbu(it,:)=2*pi/nfft*cfbin'*(optd-nfftp);                  % calculate linear phases at the MEL centre frequencies to match angs(optd,:) entries
+        if q.keepDC                                                 % if mel spectrum includes a DC term ...
+            melbu(it,1)=sdfta(1);                                   % make DC phase correct (i.e. 0 or +pi)
         end
         loopmax=q.loops;
         if strcmpi(q.MELphase,'piecewiselin')
             % mpsqit=sparse(1:nfftp,1:nfftp,sqrt((stftm2+q.regwt*max(stftm2)))); % diag matrix regularized square root of phase error weights
-            mpsqit=sparse(1:nfftp,1:nfftp,sqrt(stftm2)); % diag matrix regularized square root of phase error weights
-            phcfit=melbu(it,:)';                             % Initialize MEL weights to linear phase values
-            phlinw=mpsqit*phlin; % interpolation matrix weighted by error sensitivity
-            rega=(q.regwt*max(sum(phlinw,2)))^2; % regularization factor
-            phden=phlinw'*phlinw+rega*eye(nmel);
-            phnum=phlinw'*mpsqit;
+            mpsqit=sparse(1:nfftp,1:nfftp,sqrt(stftm2));            % diag matrix square root of phase error weights
+            phcfit=melbu(it,:)';                                    % Initialize MEL weights to linear phase values
+            phlinw=mpsqit*phlin;                                    % interpolation matrix weighted by error sensitivity
+            rega=(q.regwt*max(sum(phlinw,2)))^2;                    % regularization factor
+            phden=phlinw'*phlinw+rega*eye(nmel);                    % denominator matrix
+            phnum=phlinw'*mpsqit;                                   % numerator matrix: weighted interpolation
             ssq=[];
             ssqold=[];
-            % warning('off');                                 % suppress the warnings that happen because phlin is rank-deficient for high nmel
+            % warning('off');                                       % suppress the warnings that happen because phlin is rank-deficient for high nmel
             loopcount=0;
             thresh=q.ssqthr;
-            while ~numel(ssqold) || ssq<ssqold*thresh && loopcount<loopmax            % loop until the error no longer reduces (should perhaps be the weighted error here)
-                sdftrait=phlin*phcfit;                      % interpolated full-resolution unwrapped phase
-                sdftait=mod(sdfta-sdftrait+pi,2*pi)+sdftrait-pi;  % unwrapped phase of stft(freq,1) (+ve frequencies only)
-                ssqold=ssq;                                 % remember previous ssq
-                ssq=sum((sdftait-sdftrait).^2);             % unweighted sum of squared unwrapped phase errors
-                phcfit=phden\(phnum*sdftait+rega*phcfit);         % calculate updated phases that minimize weighted error
+            while ~numel(ssqold) || ssq<ssqold*thresh && loopcount<loopmax      % loop until the error no longer reduces (should perhaps be the weighted error here)
+                sdftrait=phlin*phcfit;                              % interpolated full-resolution unwrapped phase
+                sdftait=mod(sdfta-sdftrait+pi,2*pi)+sdftrait-pi;    % phase of stft(freq,1) unwrapped to be in range sdftrait+-pi (+ve frequencies only)
+                ssqold=ssq;                                         % remember previous ssq
+                ssq=sum((sdftait-sdftrait).^2);                     % unweighted sum of squared unwrapped phase errors
+                phcfit=phden\(phnum*sdftait+rega*phcfit);           % calculate updated phases that minimize weighted error
                 % if loopcount==0
                 %     ssq0=ssq;
                 % end
                 loopcount=loopcount+1;
             end
-            % warning('on');                                  % re-enable warnings
-            melbu(it,:)=phcfit;                             % save updated phases
+            % warning('on');                                        % re-enable warnings
+            melbu(it,:)=phcfit;                                     % save updated phases
             % fprintf(2,'loopcount=%d, ssqreduction=%.1f\n',loopcount,ssq0/ssq);
         end
     end
-    nfftprev=nfft;                                              % save nfft to avoid recomputing some quantities if it is unchanged next loop
+    nfftprev=nfft;                                                  % save nfft to avoid recomputing some quantities if it is unchanged next loop
 end
-if ~nargout  
+if ~nargout
     subplot(2,1,2);
     imagesc(melbu'*(180/pi));
     axis 'xy';

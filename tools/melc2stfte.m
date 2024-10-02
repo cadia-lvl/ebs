@@ -7,8 +7,9 @@ function stft=melc2stfte(melbm,melbu,fs,meta,par)
 %          fs                       Sample frequency
 %           meta(nframes,6)         We only use meta(:,3) which is the fft length
 %          par                      parameter structure containing optional parameters
+%                                       par.fbank=      filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel} ['m']
 %                                       par.keepDC      preserve DC as the lowest MEL bin {0, 1} [1]
-%                                       par.invmethod   MEL inversion method: {'pinv','transp','linterp'} ['linterp']
+%                                       par.invmethod   MEL inversion method: {'pinv','transp','linterp','fbxi'} ['linterp']
 %                                       par.MELphase    MEL STFT phase calculation: {'true','zero','linear','piecewiselin'} ['piecewiselin']
 %                                       par.MELdom      MEL filterbank domain: {'mag', 'pow'} ['pow']
 %
@@ -23,6 +24,7 @@ if isempty(q0)
     q0.invmethod='linterp';         % Magnitude reconstruction method: 'pinv' or 'linterp'
     q0.MELphase='piecewiselin';     % MEL STFT phase reconstruction: 'true','zero','linear','piecewiselin'
     q0.MELdom='pow';                % MEL filterbank domain: 'mag', 'pow'
+    q0.fbank='m';                   % filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel}
 end
 %
 % update algorithm parameters
@@ -30,6 +32,11 @@ if nargin>=5
     q=v_paramsetch(q0,par);             % update parameters from pp input
 else
     q=q0;                           % just copy default parameters
+end
+if q.keepDC
+    fbopt=[q.fbank 'zqdD']; % filterbank option includes DC output
+else
+    fbopt=[q.fbank 'dD'];  % filterbank option omits DC output
 end
 %
 % sort out input parameters
@@ -52,35 +59,43 @@ for it=1:nt                                                             % loop f
         %
         % here goes data-independent code that depends on fft length
         %
-        nmelx=nmel-q.keepDC;
-        cfhz=v_mel2frq((0:nmelx+1)*v_frq2mel(fs/2)/(nmelx+1));
-        cfhz=cfhz(2-q.keepDC:nmelx+1);
-        cfbin=cfhz*nfft/fs; % convert centre frequencies to fft-bin0
+
         %
         % create the inverse mbm matrix
         %
         switch q.invmethod                                              % pseudo-inverse version
             case 'pinv'
-                mbm=v_filtbankm(nmel-q.keepDC,nfft,fs,0,fs/2,'m');
+                [mbm,cfhz]=v_filtbankm(nmel,nfft,fs,0,fs/2,fbopt);
                 mbm=diag(sum(mbm,2).^(-1))*mbm;                         % normalize so that rows sum to 1 to create an interpolation matrix
-                if q.keepDC                                             % add extra STFT bin if KEEPdc=1
-                    mbm(:,1)=0;                                         % eliminate references to DC FFT bin (set column 1 to zero)
-                    mbm=vertcat(sparse(1,1,1,1,nfftp),mbm);             % preappend an extra row to preserve the DC value
-                end
+                % if q.keepDC                                             % add extra STFT bin if KEEPdc=1
+                %     mbm(:,1)=0;                                         % eliminate references to DC FFT bin (set column 1 to zero)
+                %     mbm=vertcat(sparse(1,1,1,1,nfftp),mbm);             % preappend an extra row to preserve the DC value
+                % end
                 imbm=pinv(full(mbm));
+            case 'fbxi'                                                 % use inverse from v_filtbankm
+                [mbm,cfhz,imbm]=v_filtbankm(nmel,nfft,fs,0,fs/2,fbopt);
             case 'transp'                                               % transpose version
-                mbm=v_filtbankm(nmel-q.keepDC,nfft,fs,0,fs/2,'m');    
+                [mbm,cfhz]=v_filtbankm(nmel,nfft,fs,0,fs/2,fbopt);
                 imbm=diag(sum(mbm,1).^(-1))*mbm';                       % normalize so that rows sum to 1 to create an interpolation matrix
-                if q.keepDC                                             % if mel spectrum includes a DC term ...
-                    imbm(1,:)=0;                                        % Don't use the DC term for anything else
-                    imbm=horzcat(sparse(1,1,1,nfftp,1),imbm);
-                end
             case 'linterp'                                              %  linear interpolation version
+                nmelx=nmel-q.keepDC;
+                switch q.fbank
+                    case 'm'
+                        cfhz=v_mel2frq((0:nmelx+1)*v_frq2mel(fs/2)/(nmelx+1));
+                    case 'b'
+                        cfhz=v_bark2frq((0:nmelx+1)*v_frq2bark(fs/2)/(nmelx+1));
+                    case 'e'
+                        cfhz=v_erb2frq((0:nmelx+1)*v_frq2erb(fs/2)/(nmelx+1));
+                    case 'f'
+                        cfhz=(0:nmelx+1)*0.5*fs/(nmelx+1);
+                end
+                cfhz=cfhz(2-q.keepDC:nmelx+1); % remove DC bin if q.keepDC==0
+                cfbin=cfhz*nfft/fs; % centre frequencies in fft bin units (0=dc)
                 imbm=lininterps(cfbin,0:nfftp-1);
                 if q.keepDC                                             % if mel spectrum includes a DC term ...
-                    imbm(1,:)=0;                                        % ... force this to be mapped directly without scaling
-                    imbm(:,1)=0;                                        % don't use DC mel-bin for any other fft bin
-                    imbm(1,1)=1;
+                    imbm(1,:)=0;                                        % ... eliminate other influences on DC bin
+                    imbm(:,1)=0;                                        % ... don't use DC mel-bin for any other fft bin
+                    imbm(1,1)=1;                                        % ... map DC bin directly without scaling
                 end
             otherwise
                 error(['filterbank inversion method ' q.invmethod ' not defined'])
