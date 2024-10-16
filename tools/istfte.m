@@ -1,4 +1,4 @@
-function s=istfte(stft,meta)
+function s=istfte(stft,meta,par)
 % Epoch-based inverse stft
 %
 %  Inputs: stft(nframe,maxfft)     complex STFT coefficients (unused entries are normally NaN)
@@ -27,6 +27,7 @@ if nmeta<6
         end
     end
 end
+dodct=nargin>2 && isfield(par,'groupdelay') && strcmpi(par.groupdelay,'dct');
 framelens=min(meta(:,2),maxfft);        % datapoints in each frame in samples
 s=zeros(meta(end,1:2)*[1;1]-1,1);       % space for reconstituted signal
 frameend=meta(:,1)+framelens-1;         % calculate last datsapoint of each frame
@@ -36,7 +37,11 @@ for i=1:nframe
     if meta(i,6)~=0                     % apply group delay linear phase shift
         stft(i,1:nfft)=stft(i,1:nfft).*exp(-2i*pi/nfft*meta(i,6)*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1]); % apply group delay (except to Nyquist frequency)
     end
-    sfr=ifft(stft(i,1:nfft));           % Perform inverse DFT
+    if dodct
+        sfr=irdct(stft(i,1:nfft).');    % perform inverse DCT
+    else
+        sfr=ifft(stft(i,1:nfft));           % Perform inverse DFT
+    end
     sfr=sfr(1:framelens(i));            % truncate to remove any padding
     sfr=sfr*meta(i,5)+meta(i,4);        % scale the data and add offset
     s(meta(i,1):frameend(i))=s(meta(i,1):frameend(i))+real(sfr(:)); % overlap add into the output waveform

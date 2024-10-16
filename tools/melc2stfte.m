@@ -12,6 +12,7 @@ function stft=melc2stfte(melbm,melbu,fs,meta,par)
 %                                       par.invmethod   MEL inversion method: {'pinv','transp','linterp','fbxi'} ['linterp']
 %                                       par.MELphase    MEL STFT phase calculation: {'true','zero','linear','piecewiselin'} ['piecewiselin']
 %                                       par.MELdom      MEL filterbank domain: {'mag', 'pow'} ['pow']
+%                                       par.groupdelay  'none'  DFT/DCT control: {'none','dct', ...}
 %
 % Outputs: stft(nframes,nfftmax)       complex epoch-based STFT coefficients
 %
@@ -25,6 +26,7 @@ if isempty(q0)
     q0.MELphase='piecewiselin';     % MEL STFT phase reconstruction: 'true','zero','linear','piecewiselin'
     q0.MELdom='pow';                % MEL filterbank domain: 'mag', 'pow'
     q0.fbank='m';                   % filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel}
+    q0.groupdelay='none'            % stft uses DFT rather than DCT
 end
 %
 % update algorithm parameters
@@ -49,83 +51,144 @@ nfftmax=max(fftlen);               % ... allow room for biggest fft
 %
 stft=NaN(nt,nfftmax);           % initialize stft to all NaN
 nfftprev=-1;                                                            % initialize previous nfft
-for it=1:nt                                                             % loop for all time frames
-    nfft=fftlen(it);                                              % fft length for this frame
-    newnfft=nfft~=nfftprev;                                             % nfft has changed
-    nfftp=1+floor(nfft/2);                                              % number of positive FFT frequency bins
-    melbmi=melbm(it,:)';
-    melbui=melbu(it,:)';
-    if newnfft
-        %
-        % here goes data-independent code that depends on fft length
-        %
+if strcmpi(q.groupdelay,'dct') % use DCT instead of DFT
+        fbopt=[fbopt 't'];              % add "DCT-input" option for filterbank call
+        for it=1:nt                                                             % loop for all time frames
+        ndct=fftlen(it);                                              % dct length for this frame
+        newnfft=ndct~=nfftprev;                                             % ndct has changed
+        melbmi=melbm(it,:)';
+        if newnfft
+            %
+            % here goes data-independent code that depends on fft length
+            %
 
+            %
+            % create the inverse mbm matrix
+            %
+            switch q.invmethod                                              % pseudo-inverse version
+                case 'pinv'
+                    [mbm,cfhz]=filtbankmd(nmel,ndct,fs,0,fs/2,fbopt);
+                    mbm=diag(sum(mbm,2).^(-1))*mbm;                         % normalize so that rows sum to 1 to create an interpolation matrix
+                    % if q.keepDC                                             % add extra STFT bin if KEEPdc=1
+                    %     mbm(:,1)=0;                                         % eliminate references to DC FFT bin (set column 1 to zero)
+                    %     mbm=vertcat(sparse(1,1,1,1,nfftp),mbm);             % preappend an extra row to preserve the DC value
+                    % end
+                    imbm=pinv(full(mbm));
+                case 'fbxi'                                                 % use inverse from filtbankmd
+                    [mbm,cfhz,imbm]=filtbankmd(nmel,ndct,fs,0,fs/2,fbopt);
+                case 'transp'                                               % transpose version
+                    [mbm,cfhz]=filtbankmd(nmel,ndct,fs,0,fs/2,fbopt);
+                    imbm=diag(sum(mbm,1).^(-1))*mbm';                       % normalize so that rows sum to 1 to create an interpolation matrix
+                case 'linterp'                                              %  linear interpolation version
+                    nmelx=nmel-q.keepDC;
+                    switch q.fbank
+                        case 'm'
+                            cfhz=v_mel2frq((0:nmelx+1)*v_frq2mel(fs/2)/(nmelx+1));
+                        case 'b'
+                            cfhz=v_bark2frq((0:nmelx+1)*v_frq2bark(fs/2)/(nmelx+1));
+                        case 'e'
+                            cfhz=v_erb2frq((0:nmelx+1)*v_frq2erb(fs/2)/(nmelx+1));
+                        case 'f'
+                            cfhz=(0:nmelx+1)*0.5*fs/(nmelx+1);
+                    end
+                    cfhz=cfhz(2-q.keepDC:nmelx+1);                          % remove DC bin if q.keepDC==0
+                    cfbin=cfhz*ndct/fs;                                     % centre frequencies in fft bin units (0=dc)
+                    imbm=lininterps(cfbin,0:nfftp-1);
+                    if q.keepDC                                             % if mel spectrum includes a DC term ...
+                        imbm(1,:)=0;                                        % ... eliminate other influences on DC bin
+                        imbm(:,1)=0;                                        % ... don't use DC mel-bin for any other fft bin
+                        imbm(1,1)=1;                                        % ... map DC bin directly without scaling
+                    end
+                otherwise
+                    error(['filterbank inversion method ' q.invmethod ' not defined'])
+            end
+        end
+        if strcmpi(q.MELdom,'pow')                                      % check MEL filterbank domain
+            stft(it,1:ndct)=sqrt(max(imbm*melbmi.^2,0)).';              % reconstructed magnitude stft in 'pow' domain; always +ve wich is wrong
+        else
+            stft(it,1:ndct)=(imbm*melbmi).';                            % reconstructed magnitude stft in 'mag' domain
+        end
+        nfftprev=ndct;                                                  % save ndct to avoid recomputing some quantities if it is unchanged next loop
+        end
+else                                                                    % convert to complex DFT
+    for it=1:nt                                                         % loop for all time frames
+        nfft=fftlen(it);                                                % fft length for this frame
+        newnfft=nfft~=nfftprev;                                         % nfft has changed
+        nfftp=1+floor(nfft/2);                                          % number of positive FFT frequency bins
+        melbmi=melbm(it,:)';
+        melbui=melbu(it,:)';
+        if newnfft
+            %
+            % here goes data-independent code that depends on fft length
+            %
+
+            %
+            % create the inverse mbm matrix
+            %
+            switch q.invmethod                                              % pseudo-inverse version
+                case 'pinv'
+                    [mbm,cfhz]=filtbankmd(nmel,nfft,fs,0,fs/2,fbopt);
+                    mbm=diag(sum(mbm,2).^(-1))*mbm;                         % normalize so that rows sum to 1 to create an interpolation matrix
+                    % if q.keepDC                                             % add extra STFT bin if KEEPdc=1
+                    %     mbm(:,1)=0;                                         % eliminate references to DC FFT bin (set column 1 to zero)
+                    %     mbm=vertcat(sparse(1,1,1,1,nfftp),mbm);             % preappend an extra row to preserve the DC value
+                    % end
+                    imbm=pinv(full(mbm));
+                case 'fbxi'                                                 % use inverse from filtbankmd
+                    [mbm,cfhz,imbm]=filtbankmd(nmel,nfft,fs,0,fs/2,fbopt);
+                case 'transp'                                               % transpose version
+                    [mbm,cfhz]=filtbankmd(nmel,nfft,fs,0,fs/2,fbopt);
+                    imbm=diag(sum(mbm,1).^(-1))*mbm';                       % normalize so that rows sum to 1 to create an interpolation matrix
+                case 'linterp'                                              %  linear interpolation version
+                    nmelx=nmel-q.keepDC;
+                    switch q.fbank
+                        case 'm'
+                            cfhz=v_mel2frq((0:nmelx+1)*v_frq2mel(fs/2)/(nmelx+1));
+                        case 'b'
+                            cfhz=v_bark2frq((0:nmelx+1)*v_frq2bark(fs/2)/(nmelx+1));
+                        case 'e'
+                            cfhz=v_erb2frq((0:nmelx+1)*v_frq2erb(fs/2)/(nmelx+1));
+                        case 'f'
+                            cfhz=(0:nmelx+1)*0.5*fs/(nmelx+1);
+                    end
+                    cfhz=cfhz(2-q.keepDC:nmelx+1); % remove DC bin if q.keepDC==0
+                    cfbin=cfhz*nfft/fs; % centre frequencies in fft bin units (0=dc)
+                    imbm=lininterps(cfbin,0:nfftp-1);
+                    if q.keepDC                                             % if mel spectrum includes a DC term ...
+                        imbm(1,:)=0;                                        % ... eliminate other influences on DC bin
+                        imbm(:,1)=0;                                        % ... don't use DC mel-bin for any other fft bin
+                        imbm(1,1)=1;                                        % ... map DC bin directly without scaling
+                    end
+                otherwise
+                    error(['filterbank inversion method ' q.invmethod ' not defined'])
+            end
+            cfbin=cfhz*nfft/fs;                                             % MEL centre frequencies in fft bin units (0=dc)
+        end
+        if strcmpi(q.MELdom,'pow')                                   % check MEL filterbank domain
+            stftp=sqrt(max(imbm*melbmi.^2,0));                           % reconstructed magnitude stft in 'pow' domain
+        else
+            stftp=max(imbm*melbmi,0);                                    % reconstructed magnitude stft in 'mag' domain
+        end
         %
-        % create the inverse mbm matrix
+        % now interpolate the phase
         %
-        switch q.invmethod                                              % pseudo-inverse version
-            case 'pinv'
-                [mbm,cfhz]=v_filtbankm(nmel,nfft,fs,0,fs/2,fbopt);
-                mbm=diag(sum(mbm,2).^(-1))*mbm;                         % normalize so that rows sum to 1 to create an interpolation matrix
-                % if q.keepDC                                             % add extra STFT bin if KEEPdc=1
-                %     mbm(:,1)=0;                                         % eliminate references to DC FFT bin (set column 1 to zero)
-                %     mbm=vertcat(sparse(1,1,1,1,nfftp),mbm);             % preappend an extra row to preserve the DC value
-                % end
-                imbm=pinv(full(mbm));
-            case 'fbxi'                                                 % use inverse from v_filtbankm
-                [mbm,cfhz,imbm]=v_filtbankm(nmel,nfft,fs,0,fs/2,fbopt);
-            case 'transp'                                               % transpose version
-                [mbm,cfhz]=v_filtbankm(nmel,nfft,fs,0,fs/2,fbopt);
-                imbm=diag(sum(mbm,1).^(-1))*mbm';                       % normalize so that rows sum to 1 to create an interpolation matrix
-            case 'linterp'                                              %  linear interpolation version
-                nmelx=nmel-q.keepDC;
-                switch q.fbank
-                    case 'm'
-                        cfhz=v_mel2frq((0:nmelx+1)*v_frq2mel(fs/2)/(nmelx+1));
-                    case 'b'
-                        cfhz=v_bark2frq((0:nmelx+1)*v_frq2bark(fs/2)/(nmelx+1));
-                    case 'e'
-                        cfhz=v_erb2frq((0:nmelx+1)*v_frq2erb(fs/2)/(nmelx+1));
-                    case 'f'
-                        cfhz=(0:nmelx+1)*0.5*fs/(nmelx+1);
-                end
-                cfhz=cfhz(2-q.keepDC:nmelx+1); % remove DC bin if q.keepDC==0
-                cfbin=cfhz*nfft/fs; % centre frequencies in fft bin units (0=dc)
-                imbm=lininterps(cfbin,0:nfftp-1);
-                if q.keepDC                                             % if mel spectrum includes a DC term ...
-                    imbm(1,:)=0;                                        % ... eliminate other influences on DC bin
-                    imbm(:,1)=0;                                        % ... don't use DC mel-bin for any other fft bin
-                    imbm(1,1)=1;                                        % ... map DC bin directly without scaling
-                end
-            otherwise
-                error(['filterbank inversion method ' q.invmethod ' not defined'])
+        if strcmpi(q.MELphase,'true')
+            stftp=stftp.*exp(1i*melbui(1:nfftp));                                 % reconstruct with true phases
+        elseif strcmpi(q.MELphase,'zero')
+            if q.keepDC                                                 % if mel spectrum includes a DC term ...
+                stftp(1)=stftp(1).*(2*(melbui(1)==0)-1);           % correct the sign of the DC term
+            end
+        else                                                            % linearly interpolate phases except of the DC term
+            phlin=lininterps(cfbin,0:nfftp-1,'E');                      % linear interpolation matrix for phases (nfftp,nmel)
+            if q.keepDC                                                 % if mel spectrum includes a DC term ...
+                phlin(:,1)=0;                                           % ... don't use DC phase for other bins
+                phlin(1,1)=1;                                           % ... except for the DC phase itself
+            end
+            stftp=stftp.*exp(phlin*(1i*melbui));                         % interpolated full-resolution phase
         end
-        cfbin=cfhz*nfft/fs;                                             % MEL centre frequencies in fft bin units (0=dc)
+        stft(it,1:nfft)=[stftp; conj(stftp(1+nfft-nfftp:-1:2,:))];                 % reconstruct negative frequencies
+        nfftprev=nfft;                                              % save nfft to avoid recomputing some quantities if it is unchanged next loop
     end
-    if strcmpi(q.MELdom,'pow')                                   % check MEL filterbank domain
-        stftp=sqrt(max(imbm*melbmi.^2,0));                           % reconstructed magnitude stft in 'pow' domain
-    else
-        stftp=max(imbm*melbmi,0);                                    % reconstructed magnitude stft in 'mag' domain
-    end
-    %
-    % now interpolate the phase
-    %
-    if strcmpi(q.MELphase,'true')
-        stftp=stftp.*exp(1i*melbui(1:nfftp));                                 % reconstruct with true phases
-    elseif strcmpi(q.MELphase,'zero')
-        if q.keepDC                                                 % if mel spectrum includes a DC term ...
-            stftp(1)=stftp(1).*(2*(melbui(1)==0)-1);           % correct the sign of the DC term
-        end
-    else                                                            % linearly interpolate phases except of the DC term
-        phlin=lininterps(cfbin,0:nfftp-1,'E');                      % linear interpolation matrix for phases (nfftp,nmel)
-        if q.keepDC                                                 % if mel spectrum includes a DC term ...
-            phlin(:,1)=0;                                           % ... don't use DC phase for other bins
-            phlin(1,1)=1;                                           % ... except for the DC phase itself
-        end
-        stftp=stftp.*exp(phlin*(1i*melbui));                         % interpolated full-resolution phase
-    end
-    stft(it,1:nfft)=[stftp; conj(stftp(1+nfft-nfftp:-1:2,:))];                 % reconstruct negative frequencies
-    nfftprev=nfft;                                              % save nfft to avoid recomputing some quantities if it is unchanged next loop
 end
 if ~nargout
     rgb1=v_colormap('v_thermliny','k');                     % get colormap for magnitude
