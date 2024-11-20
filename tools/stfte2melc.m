@@ -37,7 +37,7 @@ if isempty(q0)
     q0.loops=5;                     % maximum number of iterations (only for par.MELphase='piecewiselin')
     q0.ssqthr=1.00;                 % stopping threshold (only for par.MELphase='piecewiselin')
     q0.fbank='m';                   % filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel}
-    q0.groupdelay='none'            % stft uses DFT rather than DCT
+    q0.groupdelay='none';           % stft uses DFT rather than DCT
 end
 %
 % update algorithm parameters

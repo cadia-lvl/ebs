@@ -26,7 +26,7 @@ if isempty(q0)
     q0.MELphase='piecewiselin';     % MEL STFT phase reconstruction: 'true','zero','linear','piecewiselin'
     q0.MELdom='pow';                % MEL filterbank domain: 'mag', 'pow'
     q0.fbank='m';                   % filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel}
-    q0.groupdelay='none'            % stft uses DFT rather than DCT
+    q0.groupdelay='none';           % stft uses DFT rather than DCT
 end
 %
 % update algorithm parameters
