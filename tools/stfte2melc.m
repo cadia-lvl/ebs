@@ -144,7 +144,6 @@ else
                 sdftas=sin(sdfta);                                          % sin of true phase angles
                 powre=angsc*(stftm2.*sdftac)+angss*(stftm2.*sdftas);        % negative error power (GroupDelay,1)
                 [optp,optd]=max(powre);                                     % find optimum group delay in this frame
-                % angs=p2/nfft*(1-nfftp:nfft-nfftp)'*(0:nfftp-1);
                 melbu(it,:)=2*pi/nfft*cfbin'*(optd-nfftp);                  % calculate linear phases at the MEL centre frequencies to match angs(optd,:) entries
                 if q.keepDC                                                 % if mel spectrum includes a DC term ...
                     melbu(it,1)=sdfta(1);                                   % make DC phase correct (i.e. 0 or +pi)
@@ -168,8 +167,7 @@ else
                 %
                 sdfta=angle(stftp);                                         % phase of stft(1,freq) (+ve frequencies only)
                 stftm2=abs(stftp).^2;                                       % stft power for use in the phase-error cost function
-                % mpsqit=sparse(1:nfftp,1:nfftp,sqrt((stftm2+q.regwt*max(stftm2)))); % diag matrix regularized square root of phase error weights
-                mpsqit=sparse(1:nfftp,1:nfftp,sqrt(stftm2));            % sparse diag matrix square root of phase error weights
+                mpsqit=sparse(1:nfftp,1:nfftp,sqrt(max(stftm2,max(stftm2)*q.regwt^2)));            % sparse diag matrix square root of regularized phase error weights
                 phlinw=mpsqit*phlin;                                    % interpolation matrix weighted by error sensitivity
                 ssq=[];
                 ssqold=[];
@@ -188,40 +186,42 @@ else
                     % warning('off');                                       % suppress the warnings that happen because phlin is rank-deficient for high nmel
                     phcfit=phden\(phnum*sdftait+rega*phcfit);               % calculate initial phases that minimize weighted error and also minimizes delta
                     while ~numel(ssqold) || ssq<ssqold*thresh && loopcount<loopmax      % loop until the error no longer reduces (should perhaps be the weighted error here)
-                        sdftrait=phlin*phcfit;                              % interpolated full-resolution unwrapped phase
-                        sdftait=v_modsym(sdfta-sdftrait,p2)+sdftrait;     % update unwrapped phase of stft(freq,1) to be in range sdftrait+-pi(+ve frequencies only)
+                        sdftrait=phlin*phcfit;                              % interpolated DFT-resolution unwrapped phase
+                        sdftait=v_modsym(sdfta,p2,sdftrait);     % update unwrapped phase of stft(freq,1) to be in range sdftrait+-pi(+ve frequencies only)
                         ssqold=ssq;                                         % remember previous ssq
                         ssq=sum((sdftait-sdftrait).^2);                     % unweighted sum of squared unwrapped phase errors
-                        % if loopcount==0 % for diagnosic printout only
-                        %     ssq0=ssq;
-                        % end
                         loopcount=loopcount+1;
                     end
                     % warning('on');                                        % re-enable warnings
                     % fprintf(2,'loopcount=%d, ssqreduction=%.1f\n',loopcount,ssq0/ssq);
                 else                                                        %%%%% piecewise linear unwrapped phase with smoothness regularization
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    % q.MELphase='piecewiselin' finds the least squares solution to the piecewise linear phase reconstruction equation          %
+                    % phlin*phcfit=angle(sdft) modulo 2pi. Because of the modulo 2pi term, an iterative scheme is used in which the multiple    %
+                    % of 2pi to add to each element of sdfta is updated at each iteration to minimize the squared error. The right-hand-side    %
+                    % of the equation is initialized to unwrap(angle(sdft)) for the first iteration.                                            %
+                    % The target equation defined above is modified in two respects: (a) each row is multiplied by a weight to reflect its      %
+                    % contribution to the phase cost function (see above) and (b) an additional smoothness regularization is incorporated       %
+                    % which is needed if any rows of phlin are all-zero (i.e. if any mel bins are unused in the reconstruction).                %
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     smcoef=[0.5 -1 0.5]*sqrt(sum(phlinw(:).^2,1)*q.regwt/(nmel-2)); % weighting of smoothness coefficients
-                    if q.keepDC
+                    if q.keepDC                                                     % if preserving DC then ignore DC in regularization
                         amat=[phlinw; toeplitz(zeros(nmel-3,1),[0 smcoef zeros(1,nmel-4)])];
-                    else
+                    else                                                            % ... else include the DC term
                         amat=[phlinw; toeplitz([0.5; zeros(nmel-3,1)],[smcoef zeros(1,nmel-3)])];
                     end
-                    % warning('off');                                       % suppress the warnings that happen because phlin is rank-deficient for high nmel
-                    phcfit=amat\[mpsqit*sdftait; zeros(nmel-2-q.keepDC,1)];           % calculate initial phases that minimize weighted error
-                    while ~numel(ssqold) || ssq<ssqold*thresh && loopcount<loopmax      % loop until the error no longer reduces (should perhaps be the weighted error here)
-                        sdftrait=phlin*phcfit;                              % interpolated full-resolution unwrapped phase
-                        sdftait=v_modsym(sdfta-sdftrait,p2)+sdftrait; % update unwrapped phase of stft(freq,1) to be in range sdftrait+-pi(+ve frequencies only)
-                        ssqold=ssq;                                         % remember previous ssq
-                        ssq=sum((sdftait-sdftrait).^2);                     % unweighted sum of squared unwrapped phase errors
-                        phcfit=amat\[mpsqit*sdftait; zeros(nmel-2-q.keepDC,1)];           % calculate updated phases that minimize weighted error
-                        % if loopcount==0 % for diagnosic printout only
-                        %     ssq0=ssq;
-                        % end
+                    % warning('off');                                               % suppress the warnings that happen because phlin is rank-deficient for high nmel
+                    phcfit=amat\[mpsqit*sdftait; zeros(nmel-2-q.keepDC,1)];         % calculate initial phases that minimize weighted error to unwrapped SDFT phases
+                    while ~numel(ssqold) || ssq<ssqold*thresh && loopcount<loopmax  % loop until the error no longer reduces (should perhaps be the weighted error here)
+                        sdftrait=phlin*phcfit;                                      % interpolated full-resolution unwrapped phase
+                        sdftait=v_modsym(sdfta,p2,sdftrait);                        % update unwrapped phase of stft(freq,1) to be in range sdftrait+-pi(+ve frequencies only)
+                        ssqold=ssq;                                                 % remember previous ssq
+                        ssq=sum((sdftait-sdftrait).^2);                             % unweighted sum of squared unwrapped phase errors
+                        phcfit=amat\[mpsqit*sdftait; zeros(nmel-2-q.keepDC,1)];     % calculate updated phases that minimize weighted error
                         loopcount=loopcount+1;
                     end
                     sdftraux=phlin*phcfit;                              % interpolated full-resolution unwrapped phase
-                    sdftrax=v_modsym(sdftraux,p2);            % wrapped reconstructed phase
-                    %
+                    sdftrax=v_modsym(sdftraux,p2);                      % wrapped reconstructed phase in range +-pi
                 end
                 melbu(it,:)=phcfit;                                     % save updated phases
         end
