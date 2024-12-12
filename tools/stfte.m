@@ -45,6 +45,7 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %                   'gcif'      Take group delay equal to par.gcifrac multiplied by the frame length, meta(:,2).
 %                   'gpdf'      Take group delay equal to par.gpdfrac multiplied by the frame length, meta(:,2) [default=0.3].
 %                   'fmnb'      Find optimum group delay subject to bounds par.fmbound as fraction of frame length [default bounds = [0.3 0.5]].
+%                               'fmnb' minimizes an energy-weighted average of 1-cos(phi). It is quite slow.
 %                   '****int'   As above but rounded to an integer number of samples where '****' is one of the previous options
 %   par.fmbound                 Group delay bounds as fraction of frame length when using par.groupdelay='fmnb' option [default = [0.3 0.5]]
 %
