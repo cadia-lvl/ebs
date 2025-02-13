@@ -10,11 +10,11 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %                                       par.offset      'none'      offset removal: {'none','mean','ends'}
 %                                       par.scale       'none'      scaling method: {'none','peakabs','rms'}
 %                                       par.pad         'none'      zero-padding method: {'none','zero','ends'}
-%                                       par.groupdelay  'none'      linear phase component: {'none','dct','ewgd','cplx','phgr','gcif','gpdf','fmnb' + optional 'int' suffix}
+%                                       par.groupdelay  'none'      linear phase component: {'none','dct','ewgd','cplx','phgr','gcif','gpdf','fmnb','xcor' + optional 'int' suffix}
 %                                       par.fmbound     [0.3 0.5]   group delay bounds for par.groupdelay='fmnb'
 %
 % Outputs: stft(nframe,maxfft)      complex STFT coefficients
-%          meta(nframe,6)           output metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay]
+%          meta(nframe,6)           output metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay (samples)]
 %          grpd(nframe,maxfft)      group delay in samples. This is calculated from the slope of a quadratic fitted to three consecutive points along the frequency axis.
 %
 % Transformations are applied in the order window, offset, scale, pad, dft, groupdelay. If pad option is 'ends', the group delay can exceed the length of the unpadded frame.
@@ -46,6 +46,7 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %                   'gpdf'      Take group delay equal to par.gpdfrac multiplied by the frame length, meta(:,2) [default=0.3].
 %                   'fmnb'      Find optimum group delay subject to bounds par.fmbound as fraction of frame length [default bounds = [0.3 0.5]].
 %                               'fmnb' minimizes an energy-weighted average of 1-cos(phi). It is quite slow.
+%                   'xcor'      [Future] for fixed frame size only; maximize the cross-correlation between successive frames
 %                   '****int'   As above but rounded to an integer number of samples where '****' is one of the previous options
 %   par.fmbound                 Group delay bounds as fraction of frame length when using par.groupdelay='fmnb' option [default = [0.3 0.5]]
 %
@@ -143,6 +144,7 @@ if all(framelens==framelens(1))                             % all frames are the
         stft(:,1:nfft)=fft(sfr(:,1:nfft),nfft,2);           % Perform DFT on all frames of sfr (rows)
         if ~strcmp(q.groupdelay,'none')
             switch q.groupdelay(1:4)
+                case 'xcor'                                 % empty for now
                 case 'ewgd'
                     meta(:,6)=sfr(:,1:nfft).^2*(0:nfft-1)'./sum(sfr(:,1:nfft).^2,2); % calculate EWGD for all frames
                 case 'cplx'
@@ -185,6 +187,7 @@ else                                                        % we must process fr
             stft(i,1:nfft)=fft(sfr(i,1:nfft));                  % Perform DFT
             if ~strcmp(q.groupdelay,'none')
                 switch q.groupdelay(1:4)
+				    case 'xcor'                                 % empty for now
                     case 'ewgd'
                         meta(i,6)=sfr(i,1:nfft).^2*(0:nfft-1)'/sum(sfr(i,1:nfft).^2); % calculate EWGD for this frame
                     case 'cplx'
