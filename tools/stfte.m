@@ -46,7 +46,7 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %                   'gpdf'      Take group delay equal to par.gpdfrac multiplied by the frame length, meta(:,2) [default=0.3].
 %                   'fmnb'      Find optimum group delay subject to bounds par.fmbound as fraction of frame length [default bounds = [0.3 0.5]].
 %                               'fmnb' minimizes an energy-weighted average of 1-cos(phi). It is quite slow.
-%                   'xcor'      [Future] for fixed frame size only; maximize the cross-correlation between successive frames
+%                   'xcor'      for fixed frame size only; maximize the cross-correlation between successive frames
 %                   '****int'   As above but rounded to an integer number of samples where '****' is one of the previous options
 %   par.fmbound                 Group delay bounds as fraction of frame length when using par.groupdelay='fmnb' option [default = [0.3 0.5]]
 %
@@ -145,6 +145,8 @@ if all(framelens==framelens(1))                             % all frames are the
         if ~strcmp(q.groupdelay,'none')
             switch q.groupdelay(1:4)
                 case 'xcor'                                 % empty for now
+                    [ddz,jxz]=max(real(ifft(conj(stft(1:nframe-1,:)).*stft(2:nframe,:),nfft,2)),[],2); % find peak correlation. jxz=1 for zero lag, jxz(i)=2 if frame i+1 lags frame i by 1 sample
+                    meta(2:end,6)=mod(cumsum(jxz-1),nfft); % group delay is the cumulative sum of the inter-frame lags
                 case 'ewgd'
                     meta(:,6)=sfr(:,1:nfft).^2*(0:nfft-1)'./sum(sfr(:,1:nfft).^2,2); % calculate EWGD for all frames
                 case 'cplx'
@@ -188,6 +190,7 @@ else                                                        % we must process fr
             if ~strcmp(q.groupdelay,'none')
                 switch q.groupdelay(1:4)
 				    case 'xcor'                                 % empty for now
+                        error('xcor group delay option not yet implemented for variable-length frames');
                     case 'ewgd'
                         meta(i,6)=sfr(i,1:nfft).^2*(0:nfft-1)'/sum(sfr(i,1:nfft).^2); % calculate EWGD for this frame
                     case 'cplx'
