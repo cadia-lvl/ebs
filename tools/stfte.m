@@ -66,7 +66,7 @@ if isempty(q0)
     q0.gpdfrac=0.3;                     % fraction of frame length for par.groupdelay='gpdf' option
     q0.fmbound=[0.3 0.5];               % bounds for group delay option par.groupdelay='fmbd' as fraction of frame length
     q0.window='r';                      % window: 'r'=rectangular, 'n'=hanning, 'm'=hamming
-    q0.windowmode='E';                  % window mode (see v_windows.m)
+    q0.windowmode='Es';                  % window mode (see v_windows.m)
 end
 %
 % update algorithm parameters
