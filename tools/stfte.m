@@ -24,7 +24,7 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %   par.window      'r'         Rectangular [default]
 %                   'n'         Hanning window applied before offset/scale/pad operations
 %                   'm'         Hamming window applied before offset/scale/pad operations
-%   par.windowmode  'E'         window mode (see v_windows.m)
+%   par.windowmode  'E'         window mode (see v_windows.m) [currently ignored for the rectangular window]
 %   par.offset      'none'      No offset-removal is performed so meta(:,4)=0 [default]
 %                   'mean'      The mean of each frame is subtracted from the frame
 %                   'ends'      The average of the first and last samples in each frame is subtracted from the frame
