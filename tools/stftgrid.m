@@ -1,6 +1,9 @@
 function [stftg,metag]=stftgrid(stfte,meta,par)
 % Interpolation of variable frame length STFT onto a regular grid
 %
+% Usage:    [stft,meta,grpd]=stfte(s,metain,[],par);                    % epoch-based STFT
+%           [stft,meta]=stftgrid(stft,meta,par);                        % map onto a fixed grid unless par.interpstft='none'
+%
 %  Inputs: stfte(nframe,maxbin)     complex STFT coefficients
 %          meta(nframe,nmeta)       metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay (samples)]
 %                                       although only the first three columns are used
