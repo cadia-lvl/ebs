@@ -42,6 +42,7 @@ function [stftg,metag]=stftgrid(stfte,meta,par)
 %
 % Bugs/Suggestions:
 % (1) Does not currently work well for very short frames (<7 samples)
+% (2) Check definitions of frst (line 88) and taxf (line 96)
 persistent q0
 %
 % define default parameters
