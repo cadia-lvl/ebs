@@ -71,7 +71,7 @@ if strcmp(q.interpstft,'none')
 else
     [nframe,maxbin]=size(stfte);                        % number of frames and maximum fft size over all frames
     stftvv=stfte(:);                                    % make into a column vector
-    taxi=meta(:,1:2)*[1;0.5]-0.5;                       % centre of input frames in samples
+    taxi=meta(:,1:2)*[1;0.5]-0.5;                       % centre of input frames in samples (start @ 1)
     taxv=repmat(taxi,maxbin,1);                         % input centre-of-frame times in samples
     %%%% this doesn't work well for frames less than 7 samples long (luckily these are probably rare)
     nfftq=round(0.25*meta(:,3));                        % last quarter of of each row counts as negative frequencies
@@ -85,15 +85,16 @@ else
     nhop=q.interpgrid(1);                               % frame hop in samples
     nbin=q.interpgrid(2);                               % effective fft length (not necessarily even)
     nbinp=1+floor(nbin/2);                              % number of positive output frequencies
-    frst=max(ceil(taxi(1)-0.5*nhop+1.5),meta(1,1));     % start of first fixed frame in samples (frame-centre >=taxi(1)+1 to ensure no extrapolation at start)
+    frst=max(ceil(taxi(1)-0.5*nbin+1.5),meta(1,1));     % start of first fixed frame in samples (frame-centre >= taxi(1)+1 and frame-start>=meta(1,1))
+        % frst=max(ceil(taxi(1)-0.5*nhop+1.5),meta(1,1));     % start of first fixed frame in samples (frame-centre >=taxi(1)+1 to ensure no extrapolation at start)
     % frst=max(meta(1,1:2)*[1;0.5]-nbinp,1); % start of first fixed frame in samples (to ensure no extrapolation at start)
-    nframef=floor(min((taxi(end)-frst-0.5)/nhop+0.5,(meta(end,1:2)*[1;1]-frst-nbin)/nhop+1));  % #frames (to ensure no extrapolation at end)
+    nframef=floor(min((taxi(end)-frst-0.5-nbin*0.5)/nhop+1,(meta(end,1:2)*[1;1]-frst-nbin)/nhop+1));  % Num frames (frame-centre <= taxi(end)-1 and frame-end<=meta(end,1)+meta(end,2)-1)
     % nframef=1+floor(min((meta(end,1:2)*[2;1]-1-nbin-2*frst-1)/(2*nhop),(length(s)-frst-nbin+1)/nhop)); % #frames (to ensure no extrapolation at end)
     if nframef>0
         metarow=[nbin nbin 0 1 0];
         metag=[frst+(0:nframef-1)'*nhop repmat(metarow(1:min(max(size(meta,2),3),6)-1),nframef,1)];   % output metadata
         faxf=(0:nbinp-1)/nbin;                              % positive frequencies of fixed frame dft in fractions of fs
-        taxf=metag(:,1)+metag(1,1:2)*[-0.5;0.5];            % centres of fixed frames in samples
+        taxf=metag(:,1)+nbin*0.5-0.5;            % centres of fixed frames in samples
         faxfv=reshape(repmat(faxf,nframef,1),[],1);         % fixed frame frequencies
         taxfv=repmat(taxf,nbinp,1);                         % fixed frame times
         taxfact=q.interpbph/(nbin*nhop);                    % relative weighting of time-frequency errors in fs/sample
