@@ -2,21 +2,21 @@
 % clear;
 close all;
 timit='D:/OneDrive - Imperial College London/work/data/speech/timit/timit/';    % path to timit sub-folder of timit CD
-figsuf=char(string(datetime("now","Format","yyy-MM-dd_hh-mm"))); % date and time as suffix
+figsuf=char(string(datetime("now","Format","yyy-MM-dd_hh-mm")));                % current date and time as suffix for output filenames
 figpdf=['figures_<m>/<m>_<n>_' figsuf];
-% newdata='TEST/DR3/MMAB0/SX282.WAV'; % 'ep pwlin-ph' gives PESQ<4.2 @ 200 mel bins
-% newdata='TEST/DR4/FCRH0/SX278.WAV'; % /s/ @ t=3.1s gives strange framelengths with par.smoothalg='quadlog' because of a spurious frame @ t=3.04
-newdata='TRAIN/DR6/MSJK0/SX246.WAV'; % demo file for documentation
-% newdata=0;                                            % create new data for each run (1 or 0 or tf output from previous run)
+% newdata='TEST/DR3/MMAB0/SX282.WAV';       % 'ep pwlin-ph' gives PESQ<4.2 @ 200 mel bins
+% newdata='TEST/DR4/FCRH0/SX278.WAV';       % /s/ @ t=3.1s gives strange framelengths with par.smoothalg='quadlog' because of a spurious frame @ t=3.04
+newdata='TRAIN/DR6/MSJK0/SX246.WAV';        % demo file for documentation
+% newdata=0;                                % create new data for each run (1 or 0 or tf output from previous run)
 % algorithm parameters
-parvar={'cfname'};        % cell array row listing the position-dependent parameters to change during trials
-configpars={
+parvar={'cfname'};                          % cell array row listing the position-dependent parameters within configpars structure
+configpars={                                % one row per trial giving the parameter values
     {'30ms'     'epoch' 0 'fixfl'  0.03};
     {'6ms'     'epoch' 0 'fixfl'  0.006};
     {'ep+q' 'smoothalg' 'quadlog'};
     {'ep+q-natc' 'smoothalg' 'quadlog' 'interpstft' 'natural'};
     {'ep+q-natm' 'smoothalg' 'quadlog' 'interpstft' 'natural' 'interpdom' 'magcph'};
-    }; % one row per trial giving the parameter values
+    }; 
 nparvar=length(parvar); % number of position-dependent parameters
 nconfig=length(configpars);                   % number of configurations
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -35,16 +35,18 @@ nconfig=length(configpars);                   % number of configurations
 %          12       Bar-graph of complex-value change between consecutive frames for each phone-type
 %          13       Bar-graph of within-phone magnitude variance
 %          14       Bar-graph of within-phone complex variance
-%         100+      "spectrogram of STFT (for each configuration)
-%         200+      "spectrogram of interpolated STFT (for each configuration with par.interpgrid~='none')
-%         300+      Bhattacharyya divergence within each phone (for each configuration)
+%    ... plots for each configuration (added to configuration number).
+%         100+      "spectrogram" of STFT
+%         200+      "spectrogram" of interpolated STFT (only if par.interpgrid~='none')
+%         300+      Bhattacharyya divergence within each phone
 %
+plotlist=[1:3 8:9 11:14 100];       % list of graphs to plot
 dopdf=0;                            % set to 1 to export pdfs of figures
 figbold=0;                          % set to 1 to embolden selected figures
-plotlist=[1:3 8:9 11:14 100];       % list of graphs to plot
-playconfig=[];                      % configurations to play; 0=original
-tplot=0.28;                         % interesting time to plot
-fplot=1000;                         % interesting frequency to plot
+playconfig=[];                      % list of configurations to play; 0=original
+tplot=0.28;                         % interesting time to plot [seconds]
+fplot=1000;                         % interesting frequency to plot [Hz]
+%%% mapping of phone classes (from v_phoncode.m) to a small number of phone types
 phncls2typ=[6 6 4 4 4 4 4 4 4 4 4 4 4 2 3 4 4 4 6 6 6 6 6 6 6 6]; % [1=changed] 2=vowel, 3=dipthong, 4=consonant, [5=unvoiced], 6=other
 phntypename={'change','vowel', 'dipth', 'v-cons', 'u-cons', 'other'};
 nphntype=length(phntypename);       % number of phone types
@@ -120,26 +122,7 @@ axlinknm=[];                                                % number of mel bins
 %   Loop through each configuration   %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for icfg=1:nconfig                                          % loop through parameter configurations
-    par=par0;                                               % reset to default parameters
-    % update the parameters for this configuration
-    configtxt='';                                           % text description of parameter settings
-    for j=1:nparvar                                         % loop through list of updatable parameters
-        par.(parvar{j})=configpars{icfg}{j};                % set the new parameter value
-        if ischar(configpars{icfg}{j})                      % update descriptive text ...
-            configtxt=[configtxt ', ' parvar{j} '=' configpars{icfg}{j}];  % ... update descriptive string text
-        else
-            configtxt=[configtxt ', ' parvar{j} '=' num2str(configpars{icfg}{j})]; % ... update descriptive numeric text
-        end
-    end
-    for j=nparvar+1:2:length(configpars{icfg})                                      % loop through list of updatable parameters
-        par.(configpars{icfg}{j})=configpars{icfg}{j+1};                     % set the new parameter value
-        if ischar(configpars{icfg}{j+1})                           % update descriptive text ...
-            configtxt=[configtxt ', ' configpars{icfg}{j} '=' configpars{icfg}{j+1}];  % ... update descriptive string text
-        else
-            configtxt=[configtxt ', ' configpars{icfg}{j} '=' num2str(configpars{icfg}{j+1})]; % ... update descriptive numeric text
-        end
-    end
-    configtxt(1:2)=[];                                          % remove the leading ', ' from descriptive text
+    [par,configtxt]=parupdate(par0,configpars{icfg},parvar,'$c&=%&%$, $')
     cfnames{icfg}=par.cfname;                                   % save configuration name
     nhopf=round(par.interpflen*fs/par.interpov);                % frame hop for fixed frames in samples
     nbinf=2*round(par.interpflen*fs/2);                         % effective dft length (always even) for fixed frames
