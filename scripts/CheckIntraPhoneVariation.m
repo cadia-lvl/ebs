@@ -16,31 +16,32 @@ configpars={                                % one row per trial giving the param
     {'ep+q' 'smoothalg' 'quadlog'};
     {'ep+q-natc' 'smoothalg' 'quadlog' 'interpstft' 'natural'};
     {'ep+q-natm' 'smoothalg' 'quadlog' 'interpstft' 'natural' 'interpdom' 'magcph'};
-    }; 
+    };
 nparvar=length(parvar); % number of position-dependent parameters
 nconfig=length(configpars);                   % number of configurations
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   Plots (include in plotlist to plot):
 %           1       Spectrogram
-%           2       Frame lengths
-%           3       Phone labels, durations and phone-type classification
-%           4       Plot of magnitude change between consecutive frames
-%           5       Plot of complex-value change between consecutive frames
-%           6       Plot of complex-value change between consecutive frames interpolating in magnitude and unwrapped-phase
-%           7       Plot of benefit of interpolating in magnitude and unwrapped-phase; difference between plots 6 and 5
-%           8       Horizontal slice through "spectrogram" (fig 100) at frequency fplot     
-%           9       Vertical slice through "spectrogram" (fig 100) at time tplot  
-%          10       Bar-graph of complex-value change between consecutive frames interpolating in magnitude and unwrapped-phase for each phone-type
-%          11       Bar-graph of magnitude change between consecutive frames for each phone-type
-%          12       Bar-graph of complex-value change between consecutive frames for each phone-type
-%          13       Bar-graph of within-phone magnitude variance
-%          14       Bar-graph of within-phone complex variance
+%           2       Configurations
+%           3       Frame lengths
+%           4       Phone labels, durations and phone-type classification
+%           5       Plot of magnitude change between consecutive frames
+%           6       Plot of complex-value change between consecutive frames
+%           7       Plot of complex-value change between consecutive frames interpolating in magnitude and unwrapped-phase
+%           8       Plot of benefit of interpolating in magnitude and unwrapped-phase; difference between plots 6 and 5
+%           9       Horizontal slice through "spectrogram" (fig 100) at frequency fplot
+%          10       Vertical slice through "spectrogram" (fig 100) at time tplot
+%          11       Bar-graph of complex-value change between consecutive frames interpolating in magnitude and unwrapped-phase for each phone-type
+%          12       Bar-graph of magnitude change between consecutive frames for each phone-type
+%          13       Bar-graph of complex-value change between consecutive frames for each phone-type
+%          14       Bar-graph of within-phone magnitude variance
+%          15       Bar-graph of within-phone complex variance
 %    ... plots for each configuration (added to configuration number).
 %         100+      "spectrogram" of STFT
 %         200+      "spectrogram" of interpolated STFT (only if par.interpgrid~='none')
 %         300+      Bhattacharyya divergence within each phone
 %
-plotlist=[1:3 8:9 11:14 100];       % list of graphs to plot
+plotlist=[1:4 9:10 12:15 100];       % list of graphs to plot
 dopdf=0;                            % set to 1 to export pdfs of figures
 figbold=0;                          % set to 1 to embolden selected figures
 playconfig=[];                      % list of configurations to play; 0=original
@@ -113,7 +114,7 @@ phntyp(bitand(phnfeat(:,5),2^11)==0 & (phntyp(:)==4))=5; % set unvoiced consonan
 %        Initialize results array     %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 cfnames=cell(nconfig,1);                                    % list of configuration names
-cfresults=cell(nconfig,7);                                     % space for meta information
+cfresults=cell(nconfig,8);                                     % space for meta information
 framephntcnts=zeros(nphntype,3,nconfig);                    % space for phone counts
 axlinkt=[];                                                 % time axis linking list
 axlinkf=[];                                                 % frequency axis linking list
@@ -122,7 +123,7 @@ axlinknm=[];                                                % number of mel bins
 %   Loop through each configuration   %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for icfg=1:nconfig                                          % loop through parameter configurations
-    [par,configtxt]=parupdate(par0,configpars{icfg},parvar,'$c&=%&%$, $')
+    [par,configtxt]=parupdate(par0,configpars{icfg},parvar,'%cfname%: $c&=%&%$, $')
     cfnames{icfg}=par.cfname;                                   % save configuration name
     nhopf=round(par.interpflen*fs/par.interpov);                % frame hop for fixed frames in samples
     nbinf=2*round(par.interpflen*fs/2);                         % effective dft length (always even) for fixed frames
@@ -159,7 +160,7 @@ for icfg=1:nconfig                                          % loop through param
     framephntcnts(:,1:2,icfg)=[full(sparse(framephntype(framephnspurt),1,1,nphntype,1)) full(sparse(framephntype,1,1,nphntype,1))]; % count of spurts and frames by type
     framephntcnts(:,3,icfg)=framephntcnts(:,2,icfg)-framephntcnts(:,1,icfg);
     framephntcnts(1,3,icfg)=sum(framephntcnts(:,1,icfg))-1;               % framephntcnts cols: 1=# spurts, 2=# frames, 3=# frame-pairs
-    nframe=size(meta,1);                                    % number of frames  
+    nframe=size(meta,1);                                    % number of frames
     [dum,tploti]=min(abs(tax-tplot)); % index of frame to plot
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %   calculate inter-frame increments  %
@@ -241,6 +242,7 @@ for icfg=1:nconfig                                          % loop through param
         cfresults{icfg,4}=[tax(:) stft((1:nframe)+(fploti-1)*nframe).'];              % 4: trace of single frequency vs time: fplot
         cfresults{icfg,6}=[tax(tploti) min(fplotx) max(fplotx)];                      % 6: miscellaneous values
     end
+    cfresults{icfg,8}=configtxt;                            % text description of configuration
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %       Per-Configuration plots       %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -311,7 +313,7 @@ for iplot=1:20
     cfnamesmu=cfnames;
     if any(plotlist==iplot)
         switch iplot
-            case 1 %%% plot 1: spectrogram %%%
+            case 1                              %%% plot 1: spectrogram %%%
                 figure(iplot);
                 v_spgrambw(s,fs,'pJcwaAtT',[],[],[],[],{wrd phn}); % plot spectrogram with word and phone transcriptions
                 % hold on
@@ -320,7 +322,14 @@ for iplot=1:20
                 axlinkt=[axlinkt gca]; % link time axis
                 title(['Original: ' tf]);
                 if dopdf, v_fig2pdf(figpdf), end;
-            case 2   %%% plot 2: frame lengths %%%
+
+            case 2
+                figure(iplot);
+                v_texthvc(0,0.95,sprintf('%s\n',cfresults{:,8}),'LTk');
+                axis off
+                title('Configurations');
+
+            case 3   %%% plot 2: frame lengths %%%
                 figure(iplot);
                 subplot(4,1,2:4);
                 for icfg=1:nconfig
@@ -340,8 +349,9 @@ for iplot=1:20
                 v_axisenlarge([-1 -1.05]);
                 axlinkt=[axlinkt gca]; % link time axis
                 title('Frame lengths');
-                if dopdf, v_fig2pdf(figpdf), end;;
-            case 3 %%% 3: phone types
+                if dopdf, v_fig2pdf(figpdf), end;
+
+            case 4 %%% 3: phone types
                 figure(iplot);
                 plot(reshape(phnlim',[],1),reshape(repmat(phntyp,2,1),[],1));
                 hold on
@@ -357,8 +367,9 @@ for iplot=1:20
                 axlinkt=[axlinkt gca]; % link time axis
                 xlabel('Time (s)');
                 title('Phone Types');
-                if dopdf, v_fig2pdf(figpdf), end;;
-            case 4
+                if dopdf, v_fig2pdf(figpdf), end;
+
+            case 5
                 figure(iplot);
                 for icfg=1:nconfig
                     meta=cfresults{icfg,1};
@@ -376,7 +387,8 @@ for iplot=1:20
                 ylabel('Inter-frame \Delta (dB)');
                 legend(cfnamesmu,'location','best');
                 title('Interframe Magnitude Change');
-            case 5
+
+            case 6
                 figure(iplot);
                 for icfg=1:nconfig
                     meta=cfresults{icfg,1};
@@ -394,7 +406,8 @@ for iplot=1:20
                 ylabel('Inter-frame \Delta (dB)');
                 legend(cfnamesmu,'location','best');
                 title('Interframe Complex Change (Real-Imag interp)');
-            case 6
+
+            case 7
                 figure(iplot);
                 for icfg=1:nconfig
                     meta=cfresults{icfg,1};
@@ -412,7 +425,8 @@ for iplot=1:20
                 ylabel('Inter-frame \Delta (dB)');
                 legend(cfnamesmu,'location','best');
                 title('Interframe Complex Change (Mag-Uphase interp)');
-            case 7
+
+            case 8
                 figure(iplot);
                 for icfg=1:nconfig
                     meta=cfresults{icfg,1};
@@ -430,44 +444,8 @@ for iplot=1:20
                 ylabel('Inter-frame \Delta (dB)');
                 legend(cfnamesmu,'location','best');
                 title('Interframe Complex Change (Mag-Uphase minus Real-Imag)');
-            case 11 %%% 11: mean changes by phone type (magnitude)
-                figure(iplot);
-                for icfg=1:nconfig
-                    cfnamesmu{icfg}=[cfnames{icfg} sprintf(' \\mu=%.1f',mean(cfresults{icfg,2}(:,1)))];
-                    hold on
-                end
-                bar(delstftmu(:,:,1));
-                set(gca,'xtick',1:nphntype,'xticklabel',phntypename);
-                legend(cfnamesmu,'location','northeast');
-                ylabel('\Delta (dB)')
-                title('Interframe Magnitude Change');
-                if dopdf, v_fig2pdf(figpdf), end;
-            case 12 %%% 12: mean changes by phone type (complex: real-imag interp)
-                figure(iplot);
-                for icfg=1:nconfig
-                    cfnamesmu{icfg}=[cfnames{icfg} sprintf(' \\mu=%.1f',mean(cfresults{icfg,2}(:,2)))];
-                    hold on
-                end
-                bar(delstftmu(:,:,2));
-                set(gca,'xtick',1:nphntype,'xticklabel',phntypename);
-                legend(cfnamesmu,'location','best');
-                ylabel('\Delta (dB)')
-                title('Interframe Complex Change (Real-Imag interp)');
-                if dopdf, v_fig2pdf(figpdf), end;
-            case 10 %%% 10: mean changes by phone type (complex: mag-phase interp)
-                figure(iplot);
-                for icfg=1:nconfig
-                    cfnamesmu{icfg}=[cfnames{icfg} sprintf(' \\mu=%.1f',mean(cfresults{icfg,2}(:,3)))];
-                    hold on
-                end
-                bar(delstftmu(:,:,3));
-                set(gca,'xtick',1:nphntype,'xticklabel',phntypename);
-                ylim=get(gca,'ylim');
-                legend(cfnamesmu,'location','best');
-                ylabel('\Delta (dB)')
-                title('Interframe Complex Change (Mag-Uphase interp)');
-                v_fig2pdf(gcf,figpdf);
-            case 8 %%% 8: single spectrum frequency (fplot) vs time
+
+            case 9 %%% 8: single spectrum frequency (fplot) vs time
                 figure(iplot);
                 for icfg=1:nconfig
                     plot(cfresults{icfg,4}(:,1),db(abs(cfresults{icfg,4}(:,2))));
@@ -476,7 +454,7 @@ for iplot=1:20
                         cfnamesmu{icfg}=[cfnames{icfg} sprintf(' @ %.0f Hz',fminmax(1))];
                     else
                         cfnamesmu{icfg}=[cfnames{icfg} sprintf(' @ %.0f-%.0f Hz',fminmax)];
-                    end                   
+                    end
                     hold on
                 end
                 [spgbwt,spgbwf,spgbwb]=v_spgrambw(s,fs,'d'); % calculate spectrogram in dB
@@ -493,7 +471,8 @@ for iplot=1:20
                 legend(cfnamesmu,'location','best');
                 title(sprintf('SFTF @ %.0f Hz',fplot));
                 if figbold, figbolden; end;
-            case 9 %%% 9: single spectrum frame (tplot) vs frequency
+
+            case 10 %%% 9: single spectrum frame (tplot) vs frequency
                 figure(iplot);
                 for icfg=1:nconfig
                     plot(cfresults{icfg,5}(:,1),db(abs(cfresults{icfg,5}(:,2))));
@@ -514,7 +493,48 @@ for iplot=1:20
                 legend(cfnamesmu,'location','best');
                 title(sprintf('SFTF @ %.2f s',tplot));
                 if figbold, figbolden; end;
-            case 13 %%% 13: within-phone Magnitude Variance
+
+            case 11 %%% 10: mean changes by phone type (complex: mag-phase interp)
+                figure(iplot);
+                for icfg=1:nconfig
+                    cfnamesmu{icfg}=[cfnames{icfg} sprintf(' \\mu=%.1f',mean(cfresults{icfg,2}(:,3)))];
+                    hold on
+                end
+                bar(delstftmu(:,:,3));
+                set(gca,'xtick',1:nphntype,'xticklabel',phntypename);
+                ylim=get(gca,'ylim');
+                legend(cfnamesmu,'location','best');
+                ylabel('\Delta (dB)')
+                title('Interframe Complex Change (Mag-Uphase interp)');
+                v_fig2pdf(gcf,figpdf);
+
+            case 12 %%% 11: mean changes by phone type (magnitude)
+                figure(iplot);
+                for icfg=1:nconfig
+                    cfnamesmu{icfg}=[cfnames{icfg} sprintf(' \\mu=%.1f',mean(cfresults{icfg,2}(:,1)))];
+                    hold on
+                end
+                bar(delstftmu(:,:,1));
+                set(gca,'xtick',1:nphntype,'xticklabel',phntypename);
+                legend(cfnamesmu,'location','northeast');
+                ylabel('\Delta (dB)')
+                title('Interframe Magnitude Change');
+                if dopdf, v_fig2pdf(figpdf), end;
+
+            case 13 %%% 12: mean changes by phone type (complex: real-imag interp)
+                figure(iplot);
+                for icfg=1:nconfig
+                    cfnamesmu{icfg}=[cfnames{icfg} sprintf(' \\mu=%.1f',mean(cfresults{icfg,2}(:,2)))];
+                    hold on
+                end
+                bar(delstftmu(:,:,2));
+                set(gca,'xtick',1:nphntype,'xticklabel',phntypename);
+                legend(cfnamesmu,'location','best');
+                ylabel('\Delta (dB)')
+                title('Interframe Complex Change (Real-Imag interp)');
+                if dopdf, v_fig2pdf(figpdf), end;
+
+            case 14 %%% 13: within-phone Magnitude Variance
                 figure(iplot);
                 for icfg=1:nconfig
                     cfnamesmu{icfg}=cfnames{icfg};
@@ -526,7 +546,8 @@ for iplot=1:20
                 ylabel('\Delta (dB)')
                 title('within-phone Magnitude Variance');
                 if dopdf, v_fig2pdf(figpdf), end;
-            case 14 %%% 14: within-phone Complex Variance
+
+            case 15 %%% 14: within-phone Complex Variance
                 figure(iplot);
                 for icfg=1:nconfig
                     cfnamesmu{icfg}=cfnames{icfg};
