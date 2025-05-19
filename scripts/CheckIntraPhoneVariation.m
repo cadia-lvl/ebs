@@ -47,7 +47,7 @@ figbold=0;                          % set to 1 to embolden selected figures
 playconfig=[];                      % list of configurations to play; 0=original
 tplot=0.28;                         % interesting time to plot [seconds]
 fplot=1000;                         % interesting frequency to plot [Hz]
-%%% mapping of phone classes (from v_phoncode.m) to a small number of phone types
+%%% mapping of phone classes (from w_phoncode.m) to a small number of phone types
 phncls2typ=[6 6 4 4 4 4 4 4 4 4 4 4 4 2 3 4 4 4 6 6 6 6 6 6 6 6]; % [1=changed] 2=vowel, 3=dipthong, 4=consonant, [5=unvoiced], 6=other
 phntypename={'change','vowel', 'dipth', 'v-cons', 'u-cons', 'other'};
 nphntype=length(phntypename);       % number of phone types
@@ -104,7 +104,7 @@ end
 tplot=min(tplot,length(s)/fs);                                  % ensure that plot time lies within the signal
 nphn=size(phn,1);                                               % number of phones in sentence
 for i=1:nphn
-    [phn{i,3},phn{i,4}]=v_phoncode('tU',phn{i,2});              % append unicode and distinctive feature information
+    [phn{i,3},phn{i,4}]=w_phoncode('tU',phn{i,2});              % append unicode and distinctive feature information
 end
 phnlim=cell2mat(phn(:,1));                                      % extract phone limits (in seconds)
 phnfeat=cell2mat(phn(:,4));                                     % extract phone distinctive features
