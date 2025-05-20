@@ -55,43 +55,42 @@ nphntype=length(phntypename);       % number of phone types
 %    Default parameter values     %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % = global =
-par.epoch=       1;                 % 0=fixed frames, 1=epoch-based frames, 2=epoch-based interpolated in log-domain to fixed
-par.fixfl=       0.03;              % target frame length in seconds [0.03]
-par.autoscale=   'energy';          % scale reconstructed waveform to match: {'none','energy'}
-par.cfname=      '';                % configuration name
+par0.epoch=       1;                 % 0=fixed frames, 1=epoch-based frames, 2=epoch-based interpolated in log-domain to fixed
+par0.fixfl=       0.03;              % target frame length in seconds [0.03]
+par0.autoscale=   'energy';          % scale reconstructed waveform to match: {'none','energy'}
+par0.cfname=      '';                % configuration name
 % = gs_frames =
-par.pitchlim=    [40 50 400];       % [min targt max] pitch (Hz)
-par.gcifrac=     0.3;               % position of GCI in analysis frame
-par.GCImethod=   'YAGA';            % GCI estimation method
-par.ovfact=      1;                 % integer overlap factor; 1 for no overlap, 2 for 50%
+par0.pitchlim=    [40 50 400];       % [min targt max] pitch (Hz)
+par0.gcifrac=     0.3;               % position of GCI in analysis frame
+par0.GCImethod=   'YAGA';            % GCI estimation method
+par0.ovfact=      1;                 % integer overlap factor; 1 for no overlap, 2 for 50%
 % = smoothframes
-par.smoothalg=   'none';            % smoothing algorithm {'none','lin','quadlin','quadlog'}
-par.voithresh=   0.7;               % cross-correlation threshold for voiced frames
-par.voilenrat=   1.1;               % length ratio threshold for voiced frames
+par0.smoothalg=   'none';            % smoothing algorithm {'none','lin','quadlin','quadlog'}
+par0.voithresh=   0.7;               % cross-correlation threshold for voiced frames
+par0.voilenrat=   1.1;               % length ratio threshold for voiced frames
 % = stfte =
-par.window=      'r';               % Window: {'r','n','m'} = {Rectangular, Hanning, Hamming}
-par.offset=      'none';            % offset removal: {'none','mean'}
-par.scale=       'none';            % scaling method: {'none','peakabs','rms'}
-par.pad=         'none';            % zero-padding method: {'none','zero','ends'}
-par.groupdelay=  'none';            % linear phase component: {'none','dct','ewgd','ewgdint','cplx','cplxint','xcor'}
+par0.window=      'r';               % Window: {'r','n','m'} = {Rectangular, Hanning, Hamming}
+par0.offset=      'none';            % offset removal: {'none','mean'}
+par0.scale=       'none';            % scaling method: {'none','peakabs','rms'}
+par0.pad=         'none';            % zero-padding method: {'none','zero','ends'}
+par0.groupdelay=  'none';            % linear phase component: {'none','dct','ewgd','ewgdint','cplx','cplxint','xcor'}
 % = stftgrid =
-par.interpstft=  'none';            % interpolation method for call to griddata: {'none','nearest','linear','natural','cubic','v4'}
-par.interpgrid= [];                 % par.interpgrid=[nhop nbin] is calculated below from par.interpflen, par.interpov and fs
-par.interpflen=  0.007;             % target frame length in seconds (reciprocal of frequency-grid spacing) [0.01]
-par.interpov=    1;                 % overlap factor; 1 for no overlap, 2 for 50%; time grid-spacing is par.interpflen/par.interpov
-par.interpbph=  0.196;              % time-frequency distance tradeoff in bins/hop
-par.interpdom=   'cplx';            % interpolation domain: {'cplx','magcph','crmcph'}
+par0.interpstft=  'none';            % interpolation method for call to griddata: {'none','nearest','linear','natural','cubic','v4'}
+par0.interpgrid= [];                 % par.interpgrid=[nhop nbin] is calculated below from par.interpflen, par.interpov and fs
+par0.interpflen=  0.007;             % target frame length in seconds (reciprocal of frequency-grid spacing) [0.01]
+par0.interpov=    1;                 % overlap factor; 1 for no overlap, 2 for 50%; time grid-spacing is par.interpflen/par.interpov
+par0.interpbph=  0.196;              % time-frequency distance tradeoff in bins/hop
+par0.interpdom=   'cplx';            % interpolation domain: {'cplx','magcph','crmcph'}
 % = stfte2melc
-par.fbank=       'm';               % filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel}
-par.keepDC=      1;                 % preserve DC as the lowest MEL bin {0, 1}
-par.MELphase=    'true';            % MEL STFT phase calculation: {'true','zero','linear','piecewiselin','grpdel'}
-par.MELdom=      'mag';             % MEL filterbank domain: {'mag', 'pow'}
-par.regwt=       0.01;              % regularizing factor for phase weights when par.MELphase='piecewiselin'
-par.loops=       5;                 % maximum number of iterations when par.MELphase='piecewiselin'
-par.ssqthr=      1.0;               % stopping threshold when par.MELphase='piecewiselin'
+par0.fbank=       'm';               % filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel}
+par0.keepDC=      1;                 % preserve DC as the lowest MEL bin {0, 1}
+par0.MELphase=    'true';            % MEL STFT phase calculation: {'true','zero','linear','piecewiselin','grpdel'}
+par0.MELdom=      'mag';             % MEL filterbank domain: {'mag', 'pow'}
+par0.regwt=       0.01;              % regularizing factor for phase weights when par.MELphase='piecewiselin'
+par0.loops=       5;                 % maximum number of iterations when par.MELphase='piecewiselin'
+par0.ssqthr=      1.0;               % stopping threshold when par.MELphase='piecewiselin'
 % = melc2stfte
-par.invmethod=  'pinv';             %  MEL inversion method: {'pinv','transp','linterp'} ['linterp']
-par0=par; % save default parameters
+par0.invmethod=  'pinv';             %  MEL inversion method: {'pinv','transp','linterp'} ['linterp']
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %        Read speech data             %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -114,7 +113,7 @@ phntyp(bitand(phnfeat(:,5),2^11)==0 & (phntyp(:)==4))=5; % set unvoiced consonan
 %        Initialize results array     %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 cfnames=cell(nconfig,1);                                    % list of configuration names
-cfresults=cell(nconfig,8);                                     % space for meta information
+cfresults=cell(nconfig,8);                                  % space for meta information
 framephntcnts=zeros(nphntype,3,nconfig);                    % space for phone counts
 axlinkt=[];                                                 % time axis linking list
 axlinkf=[];                                                 % frequency axis linking list
@@ -123,7 +122,7 @@ axlinknm=[];                                                % number of mel bins
 %   Loop through each configuration   %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for icfg=1:nconfig                                          % loop through parameter configurations
-    [par,configtxt]=parupdate(par0,configpars{icfg},parvar,'%cfname%: $c&=%&%$, $')
+    [par,configtxt]=parupdate(par0,configpars{icfg},parvar,'%cfname%: $c&=%&%$, $');
     cfnames{icfg}=par.cfname;                                   % save configuration name
     nhopf=round(par.interpflen*fs/par.interpov);                % frame hop for fixed frames in samples
     nbinf=2*round(par.interpflen*fs/2);                         % effective dft length (always even) for fixed frames
@@ -148,7 +147,7 @@ for icfg=1:nconfig                                          % loop through param
     metain=[framelim(1,:);1+[-1 1]*framelim]';                  % one row per frame: [start-sample frame-length]
     [stft,meta,grpd]=stfte(s,metain,[],par);                    % epoch-based STFT
     [stft,meta]=stftgrid(stft,meta,par);                        % optionally map onto a fixed grid
-    tax=(meta(:,1:2)*[1;0.5]-0.5)'/fs;                          % time axis (frame centres in seconds)
+    tax=(meta(:,1:2)*[1;0.5]-0.5)'/fs;                          % time axis (frame centres in seconds, 1st sample @ 1/fs)
     nfftmax=size(stft,2);
     nfftp=1+floor(nfftmax/2); % number of positive frequencies
     fax=(0:nfftp-1)*fs/nfftmax; % frequency bins in Hz
@@ -310,7 +309,7 @@ if any(playconfig==0)
 end
 % global plots
 for iplot=1:20
-    cfnamesmu=cfnames;
+    cfnamesmu=cfnames;                          % initialize space for configuration names  extra plot-dependent information
     if any(plotlist==iplot)
         switch iplot
             case 1                              %%% plot 1: spectrogram %%%
