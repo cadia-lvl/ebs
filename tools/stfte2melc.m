@@ -187,7 +187,7 @@ else
                     phcfit=phden\(phnum*sdftait+rega*phcfit);               % calculate initial phases that minimize weighted error and also minimizes delta
                     while ~numel(ssqold) || ssq<ssqold*thresh && loopcount<loopmax      % loop until the error no longer reduces (should perhaps be the weighted error here)
                         sdftrait=phlin*phcfit;                              % interpolated DFT-resolution unwrapped phase
-                        sdftait=v_modsym(sdfta,p2,sdftrait);     % update unwrapped phase of stft(freq,1) to be in range sdftrait+-pi(+ve frequencies only)
+                        sdftait=v_modsym(sdfta,p2,sdftrait);                % update unwrapped phase of stft(freq,1) to be in range sdftrait+-pi(+ve frequencies only)
                         ssqold=ssq;                                         % remember previous ssq
                         ssq=sum((sdftait-sdftrait).^2);                     % unweighted sum of squared unwrapped phase errors
                         loopcount=loopcount+1;
