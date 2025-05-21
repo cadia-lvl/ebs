@@ -10,11 +10,11 @@ close all;
 %
 parvar={'cfname' 'epoch' 'nmix'};                                                              % cell array row listing the parameters to change during trials
 configpars={
-{'30ms-g1' 0 1};   % one row per trial giving the parameter values
+    {'30ms-g1' 0 1};   % one row per trial giving the parameter values
     % {'30ms-m4' 0 4};
     {'ep-g1' 1 1};
     {'ep-g1' 1 1};
-   {'epq-natm-g1' 1 1 'smoothalg' 'quadlog' 'interpstft' 'natural' 'interpdom' 'magcph'};
+    {'epq-natm-g1' 1 1 'smoothalg' 'quadlog' 'interpstft' 'natural' 'interpdom' 'magcph'};
     % {'ep-g4' 1 4};
     {'ep-g1-lda15' 1 1 'ldatype' 'lda'};
     % {'e-g4-lda15'  1 4 'ldatype' 'lda'};
@@ -114,6 +114,10 @@ acc=zeros(1,ncfg); % overall accuracy
 for icfg=1:ncfg                                         % loop through parameter configurations
     [par,partxt]=parupdate(par0,configpars{icfg},parvar,'%cfname%: $c&=%&%$, $'); % Set up the parameters for this trial
     cfnames{icfg}=par.cfname;                                   % save configuration name
+    nhopf=round(par.interpflen*fs/par.interpov);                % frame hop for fixed frames in samples
+    nbinf=2*round(par.interpflen*fs/2);                         % effective dft length (always even) for fixed frames
+    par.interpgrid=[nhopf nbinf];                               % save frame hop and number of bins as a parameter for stftgrid
+    interphzps=par.interpbph*fs^2/(nhopf*nbinf);                % convert from bins/hop to Hz per second
     %
     % derived parameters that depend on parameter configuration
     %
