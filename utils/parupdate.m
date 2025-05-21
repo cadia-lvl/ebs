@@ -120,9 +120,13 @@ if nargout~=1                                                  % descriptive tex
                     loopspec=fmi-48-(fmi>96)*39; % bit mask: 1=default, 2=unchanged, 4=changed, 8=added
                     fieldlist=find(bitand(loopspec,fnamstat)>0); % list of fields to display
                     nfield=length(fieldlist);
-                    ifield=1; % initialize field index
-                    state=3; % within a loop
-
+                    if nfield>0
+                        ifield=1; % initialize field index
+                        state=3; % within a loop
+                    else % no loop entries to process
+                        i=idoll(3); % skip to end of loop
+                        state=0;
+                    end
                 case 3          % normal text within a loop
                     switch fmi
                         case '%' % interpolate field value
