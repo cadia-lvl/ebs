@@ -33,7 +33,7 @@ configpars={
 %     *   800+      Mel-Spectrogram + recognition results
 %
 parplt=[1:10]; 								% configurations to plot
-pltsel=[1 7 300:100:800]; 				        % list of plots to do
+pltsel=[1 7 300:100:800]; 				    % list of plots to do
 nfile=[100 100];                      		% number of TIMIT files for training and testing
 % nfile=[10 10];                      		% number of TIMIT files for training and testing
 %
@@ -66,13 +66,13 @@ par0.interpstft=  'none';            % interpolation method for call to griddata
 par0.interpgrid= [];                 % par.interpgrid=[nhop nbin] is calculated below from par.interpflen, par.interpov and fs
 par0.interpflen=  0.007;             % target frame length in seconds (reciprocal of frequency-grid spacing) [0.01]
 par0.interpov=    1;                 % overlap factor; 1 for no overlap, 2 for 50%; time grid-spacing is par.interpflen/par.interpov
-par0.interpbph=  0.196;              % time-frequency distance tradeoff in bins/hop
+par0.interpbph=   0.196;             % time-frequency distance tradeoff in bins/hop
 par0.interpdom=   'cplx';            % interpolation domain: {'cplx','magcph','crmcph'}
 % = stfte2melc
-par0.nmel=29;                        % number of mel bins = 29 @ 16kHz
+par0.nmel=        29;                % number of mel bins = 29 @ 16kHz
 par0.fbank=       'm';               % filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel}
 par0.keepDC=      0;                 % preserve DC as the lowest MEL bin {0, 1}
-par0.MELphase=    'linear';         % MEL STFT phase calculation: {'true','zero','linear','piecewiselin','piecewiselind','grpdel'}
+par0.MELphase=    'linear';          % MEL STFT phase calculation: {'true','zero','linear','piecewiselin','piecewiselind','grpdel'}
 par0.MELdom=      'mag';             % MEL filterbank domain: {'mag', 'pow'}
 par0.regwt=       0.01;              % regularizing factor for phase weights when par.MELphase='piecewiselin'
 par0.loops=       5;                 % maximum number of iterations when par.MELphase='piecewiselin'
