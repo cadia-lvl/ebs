@@ -331,7 +331,26 @@ for iplot=1:20
 
             case 2
                 figure(iplot);
-                v_texthvc(0,0.95,sprintf('%s\n',cfresults{:,8}),'LTk');
+                cfdesc='';
+                linelen=50;
+                for i=1:ncfg
+                    cfdesci=sprintf('%d) %s',i,cfresults{i,8});
+                    while length(cfdesci)>linelen
+                        j=find(cfdesci(5:linelen)==',',1,'last')+4;
+                        if isempty(j)
+                            j=find(cfdesci(5:linelen)=='=',1,'last')+4;
+                            if isempty(j)
+                                j=linelen;
+                            end
+                        end
+                        cfdesc=[cfdesc cfdesci(1:j) char(10)]; % append remainder of description
+                        cfdesci=['    ' cfdesci(j+1:end)];
+                    end
+                    if length(cfdesci)>0
+                        cfdesc=[cfdesc cfdesci char(10)]; % append remainder of description
+                    end
+                end
+                v_texthvc(0,0.95,cfdesc,'LTk');
                 axis off
                 title('Configurations');
 
