@@ -138,7 +138,7 @@ for icfg=1:ncfg                                         % loop through parameter
     end
     nfft=round(par.fixfl*fs);                           % frame length in samples [~ par.fixfl seconds]
     inc=floor(nfft/2);                                  % frame increment = 50% of frame length
-    for itt=1:2                                         % training and testing
+    for itt=1:2                                         % 1=training and 2=testing
         if itt==1                                       % training initialization
             vn=zeros(nphons,1);                         % initialize: phone count
             vm=zeros(nphons,nd);                        % ... phone sum
@@ -245,9 +245,9 @@ for icfg=1:ncfg                                         % loop through parameter
                 framelen=1+[-1 1]*framelim;                         % length of each frame in samples
                 metain=[framelim(1,:);framelen]';
                 [stft,meta]=stfte(s,metain,[],par);                 % epoch-based STFT
-                [stft,meta]=stftgrid(stft,meta,par);                % optionally map onto a fixed grid
+                [stft,meta]=stftgrid(stft,meta,par);                % optionally map onto a fixed grid and update stft and meta
                 [melbm,melbu,cfhz,mbm]=stfte2melc(stft,fs,par.nmel,par);
-                c=mel2melcep(melbm,par.wcep,par.ncep);
+                c=mel2melcep(melbm,par.wcep,par.ncep);              % calculate the mel-cepstrum feature vector, c
                 tc=(meta(:,1:2)*[1;0.5]-1.5)/fs;                    % frame centres in seconds (1st sample @ zero)
                 pth=max(melbm(:))*1E-20;                            % low threshold to avoid infinite logs
                 y=log(max(melbm,pth));                              % log mel spectrogram
