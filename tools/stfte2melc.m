@@ -208,7 +208,7 @@ else
                     if q.keepDC                                                     % if preserving DC then ignore DC in regularization
                         amat=[phlinw; toeplitz(zeros(nmel-3,1),[0 smcoef zeros(1,nmel-4)])];
                     else                                                            % ... else include the DC term
-                        amat=[phlinw; toeplitz([0.5; zeros(nmel-3,1)],[smcoef zeros(1,nmel-3)])];
+                        amat=[phlinw; toeplitz([smcoef(1); zeros(nmel-3,1)],[smcoef zeros(1,nmel-3)])];
                     end
                     % warning('off');                                               % suppress the warnings that happen because phlin is rank-deficient for high nmel
                     phcfit=amat\[mpsqit*sdftait; zeros(nmel-2-q.keepDC,1)];         % calculate initial phases that minimize weighted error to unwrapped SDFT phases
