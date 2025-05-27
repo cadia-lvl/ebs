@@ -6,8 +6,10 @@ switch computername
         timit='/Users/jg/Data/TIMIT/timit/';
     case 'ee-dmb4'
         timit='D:/OneDrive - Imperial College London/work/data/speech/timit/timit/';    % path to timit sub-folder of timit CD
+    case 'elitedesk'
+        timit='D:/OneDrive - Imperial College London/work/data/speech/timit/timit/';    % path to timit sub-folder of timit CD
     otherwise
-        error('Add your computername in this switch statement')
+        error(sprintf('Add your computername (''%s'') into this switch statement',computername));
 end;
 figsuf=char(string(datetime("now","Format","yyy-MM-dd_hh-mm")));                % current date and time as suffix for output filenames
 figpdf=['figures_<m>/<m>_<n>_' figsuf];
