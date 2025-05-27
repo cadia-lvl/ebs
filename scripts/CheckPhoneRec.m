@@ -34,8 +34,8 @@ configpars={
 %
 parplt=[1:10]; 								% configurations to plot
 pltsel=[1 7 300:100:800]; 				    % list of plots to do
-nfile=[100 100];                      		% number of TIMIT files for training and testing
-% nfile=[10 10];                      		% number of TIMIT files for training and testing
+% nfile=[100 100];                      		% number of TIMIT files for training and testing
+nfile=[10 10];                      		% number of TIMIT files for training and testing
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    Default parameter values     %
@@ -72,7 +72,7 @@ par0.interpdom=   'cplx';            % interpolation domain: {'cplx','magcph','c
 par0.nmel=        29;                % number of mel bins = 29 @ 16kHz
 par0.fbank=       'm';               % filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel}
 par0.keepDC=      0;                 % preserve DC as the lowest MEL bin {0, 1}
-par0.MELphase=    'linear';          % MEL STFT phase calculation: {'true','zero','linear','piecewiselin','piecewiselind','grpdel'}
+par0.MELphase=    'piecewiselin';          % MEL STFT phase calculation: {'true','zero','linear','piecewiselin','piecewiselind','grpdel'}
 par0.MELdom=      'mag';             % MEL filterbank domain: {'mag', 'pow'}
 par0.regwt=       0.01;              % regularizing factor for phase weights when par.MELphase='piecewiselin'
 par0.loops=       5;                 % maximum number of iterations when par.MELphase='piecewiselin'
@@ -125,7 +125,7 @@ for icfg=1:ncfg                                         % loop through parameter
     ndp=par.ndp; % number of alternatives to keep in the dynamic programming
     nd=(par.ncep+any(par.wcep=='0'))*(1+any(par.wcep=='d')+any(par.wcep=='D'));    % size of raw feature vector
     np=nd-(needlda && par.nlda>0 && par.nlda<nd)*(nd-par.nlda);                    % actual feature dimension: either nd or par.nlda
-    needfullcov=par.fullcov || needlda; % need to calculate full covariance matrices from the training data
+    needfullcov=par.fullcov || needlda;                 % need to calculate full covariance matrices from the training data
     %
     if needfullcov
         ndr=repmat(1:nd,1,nd);                          % row indices for nd*nd covariance matrix
