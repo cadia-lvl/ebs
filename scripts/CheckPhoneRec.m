@@ -251,7 +251,7 @@ for icfg=1:ncfg                                         % loop through parameter
                 c=mel2melcep(melbm,par.wcep,par.ncep);              % calculate the mel-cepstrum feature vector, c
                 tc=(meta(:,1:2)*[1;0.5]-1.5)/fs;                    % frame centres in seconds (1st sample @ zero)
                 pth=max(melbm(:))*1E-20;                            % low threshold to avoid infinite logs
-                y=log(max(melbm,pth));                              % log mel spectrogram
+                y=log(max(melbm,pth));                              % mel log-spectrogram
             else                                                    % *** fixed frames ***
                 [z,tc]=v_enframe(s,0.54-0.46*cos(2*pi*(0:nfft-1)'/(nfft-1)),inc); % Hamming window
                 tc=(tc-1)/fs;                                       % times of frame centres with 1st sample @ 0 [seconds]
@@ -467,7 +467,7 @@ for icfg=1:ncfg                                         % loop through parameter
             phacc=50*sum(phcs)/phcs(2); % frame accuracy
             imagesc(1:nframe,0:size(y,2)-1,[max(abs(y(:)))*phcor y]');
             axis xy;
-            title(sprintf('%s: Logmel Spgram',par.cfname));
+            title(sprintf('%s: Mel Spgram',par.cfname));
             ylabel('Mel bin');
             ax1=gca;
             set(ax1,'XaxisLocation','top');
