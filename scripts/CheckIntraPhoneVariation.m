@@ -1,16 +1,7 @@
 % Test interpolation of epoch-based STFT frames onto fixed grid
 % clear;
 close all;
-switch computername
-    case 'UTs-MacBook-Pro.local'
-        timit='/Users/jg/Data/TIMIT/timit/';
-    case 'ee-dmb4'
-        timit='D:/OneDrive - Imperial College London/work/data/speech/timit/timit/';    % path to timit sub-folder of timit CD
-    case 'elitedesk'
-        timit='D:/OneDrive - Imperial College London/work/data/speech/timit/timit/';    % path to timit sub-folder of timit CD
-    otherwise
-        error(sprintf('Add your computername (''%s'') into this switch statement',computername));
-end;
+timit=gettimitpath;                         % get path to timit subfolder of timit database
 figsuf=char(string(datetime("now","Format","yyy-MM-dd_hh-mm")));                % current date and time as suffix for output filenames
 figpdf=['figures_<m>/<m>_<n>_' figsuf];
 % newdata='TEST/DR3/MMAB0/SX282.WAV';       % 'ep pwlin-ph' gives PESQ<4.2 @ 200 mel bins
@@ -335,7 +326,7 @@ for iplot=1:20
                 figure(iplot);
                 cfdesc='';
                 linelen=50;
-                for i=1:ncfg
+                for i=1:nconfig
                     cfdesci=sprintf('%d) %s',i,cfresults{i,8});
                     while length(cfdesci)>linelen
                         j=find(cfdesci(5:linelen)==',',1,'last')+4;

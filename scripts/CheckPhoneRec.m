@@ -7,6 +7,7 @@
 % (4) Incorporate transition probabilities
 clear;
 close all;
+timit=gettimitpath;                         % get path to timit subfolder of timit database
 %
 parvar={'cfname' 'epoch' 'nmix'};                                                              % cell array row listing the parameters to change during trials
 configpars={
@@ -105,7 +106,7 @@ nphons=length(sph);                         % number of possible TIMIT phones [6
 silphon=64;                                 % silence phone number (currently 64)
 ty=cell(1,2);                               % initialize list of TIMIT files to use
 for itt=1:2 % training and testing
-    ty{itt}=timitfiles(timflg{itt},nfile(itt)); % list of TIMIT files to use
+    ty{itt}=timitfiles(timflg{itt},nfile(itt),timit); % list of TIMIT files to use
 end
 % initialize per-conficuration statistics
 cfnames=cell(ncfg,1);                                    % list of configuration names
@@ -235,7 +236,7 @@ for icfg=1:ncfg                                         % loop through parameter
         nfiles=length(ty{itt});
         for ifile=1:nfiles                                          % loop through training or testing files
             v_finishat([icfg 1 ncfg; itt 1 2; ifile 1 nfiles]);     % estimate finish time
-            [s,fs,wrd,phn]=gettimit(ty{itt}{ifile},'n');            % read timit file and normalize power
+            [s,fs,wrd,phn]=gettimit(ty{itt}{ifile},'n',timit);            % read timit file and normalize power
             [uniph,phv]=w_phoncode('tFU',phn(:,2),11);              % convert phone symbols to TIMIT phone numbers
             ophnt=cell2mat(phn(:,1));                               % start and end times of phones [seconds]
             nphone=size(ophnt,1);                                   % number of phones in this utterance
