@@ -10,7 +10,7 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %                                       par.offset      'none'      offset removal: {'none','mean','ends'}
 %                                       par.scale       'none'      scaling method: {'none','peakabs','rms'}
 %                                       par.pad         'none'      zero-padding method: {'none','zero','ends'}
-%                                       par.groupdelay  'none'      linear phase component: {'none','dct','ewgd','cplx','phgr','gcif','gpdf','fmnb','xcor' + optional 'int' suffix}
+%                                       par.groupdelay  'none'      linear phase component: {'none','dct','ewgd','cplx','phgr','gcif','gpdf','fmnb','xcor'} + optional 'int' suffix
 %                                       par.fmbound     [0.3 0.5]   group delay bounds for par.groupdelay='fmnb'
 %
 % Outputs: stft(nframe,maxfft)      complex STFT coefficients
