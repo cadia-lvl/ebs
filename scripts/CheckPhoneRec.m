@@ -32,7 +32,7 @@ configpars={
 %         400+      Phone confusion matrix
 %     *   600+      Feature-Spectrogram + recognition results
 %     *   800+      Mel-Spectrogram + recognition results
-%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 parplt=[1:10]; 								% configurations to plot
 pltsel=[1 7 300:100:800]; 				    % list of plots to do
 % nfile=[100 100];                      		% number of TIMIT files for training and testing
