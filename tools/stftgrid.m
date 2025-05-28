@@ -69,6 +69,9 @@ if strcmp(q.interpstft,'none')
     stftg=stfte;
     metag=meta;
 else
+    if size(meta,2)<6
+        meta(1,6)=0;                                    % enlarge meta to 6 columns if necessary
+    end
     [nframe,maxbin]=size(stfte);                        % number of frames and maximum fft size over all frames
     stftvv=stfte(:);                                    % make into a column vector
     taxi=meta(:,1:2)*[1;0.5]-0.5;                       % centre of input frames in samples (start @ 1)
@@ -91,10 +94,9 @@ else
     nframef=floor(min((taxi(end)-frst-0.5-nbin*0.5)/nhop+1,(meta(end,1:2)*[1;1]-frst-nbin)/nhop+1));  % Num frames (frame-centre <= taxi(end)-1 and frame-end<=meta(end,1)+meta(end,2)-1)
     % nframef=1+floor(min((meta(end,1:2)*[2;1]-1-nbin-2*frst-1)/(2*nhop),(length(s)-frst-nbin+1)/nhop)); % #frames (to ensure no extrapolation at end)
     if nframef>0
-        metarow=[nbin nbin 0 1 0];
-        metag=[frst+(0:nframef-1)'*nhop repmat(metarow(1:min(max(size(meta,2),3),6)-1),nframef,1)];   % output metadata
+        metag=[frst+(0:nframef-1)'*nhop repmat([nbin nbin 0 1 0],nframef,1)];   % output metadata
         faxf=(0:nbinp-1)/nbin;                              % positive frequencies of fixed frame dft in fractions of fs
-        taxf=metag(:,1)+nbin*0.5-0.5;            % centres of fixed frames in samples
+        taxf=metag(:,1)+nbin*0.5-0.5;                       % centres of fixed frames in samples (start @ 1)
         faxfv=reshape(repmat(faxf,nframef,1),[],1);         % fixed frame frequencies
         taxfv=repmat(taxf,nbinp,1);                         % fixed frame times
         taxfact=q.interpbph/(nbin*nhop);                    % relative weighting of time-frequency errors in fs/sample
@@ -115,6 +117,7 @@ else
                 msk=vqa~=0;                                 % complex phase irrelevant if vqa==0
                 vq(msk)=vq(msk)./vqa(msk).*vqc(msk);        % magnitude from vq and phase from vqc unless vqc==0
         end
+        % [xxi,xxf]=v_interval(taxf,taxi);
         stftg=reshape(vq,nframef,[]);                       % stft has one row per frame
         if mod(nbin,2)>0                                    % nbin is odd
             stftg=[real(stftg(:,1)) stftg(:,2:end) conj(stftg(:,end:-1:2))]; % force conjugate symmetry
@@ -123,7 +126,7 @@ else
         end
     else % no frames to output
         stftg=zeros(0,nbin);
-        metag=zeros(0,min(max(size(meta,2),3),6));
+        metag=zeros(0,6);
     end
 end
 if ~nargout && size(stftg,1)>0
