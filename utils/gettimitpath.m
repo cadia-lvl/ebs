@@ -5,7 +5,7 @@ if ~isempty(q)
     p=q;                        % use previously cached path if possible
 else
     switch computername
-        case 'UTs-MacBook-Pro.local'
+        case 'mac.home'
             p='/Users/jg/Data/TIMIT/timit/';
         case 'ee-dmb4'
             p='D:/OneDrive - Imperial College London/work/data/speech/timit/timit/';    % path to timit sub-folder of timit CD

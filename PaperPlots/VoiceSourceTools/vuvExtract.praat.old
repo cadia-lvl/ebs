@@ -1,0 +1,56 @@
+# This script extracts voiced intervals from a selected Sound object.
+#
+# The extraction is made without the user having to specify arguments for the "To Pitch (ac)"
+# and "To TextGrid" commands.
+# Testing the script on a number of sentences 15 - 20 seconds long spoken by normal and pathological
+# voices has shown that a reasonably correct extraction of voiced intervals can be achieved
+# by the values of arguments specified below for the To Pitch (ac) and To TextGrid (vuv)
+# commands if the mean_period (To TextGrid (vuv)) varies as a function of the median F0 of the Sound
+# object. The script will handle fundamental frequencies between 60 and 400 Hz. If F0 is lower
+# (e.g. in a creaky male voice) og higher (e.g. in a voice using the falsetto register) the
+# 'manually operated' version voiced_extract.psc should be used.
+
+# 20020423 John Tndering, modified quite a lot by Niels Reinholt Petersen
+
+# This is still adapted script significantly.  Obtained from: http://www.linguistics.ucla.edu/faciliti/facilities/acoustic/voiced_extract_auto.txt
+# The main aim was to be able to run this from the command line
+
+form IO files
+  text fileNameIn  ReadText.wav
+  text fileNameOut ReadText.TextGrid
+  positive timeStep 0.01
+  positive pitchFloor 60.0
+  integer maxNoCand 15
+  boolean veryAccurate 0
+  positive silenceTh 0.03
+  positive voicingTh 0.7
+  positive octiveCost 0.01
+  positive octiveJumpCost 0.35
+  positive vuCost 0.14
+  positive pitchCeiling 400.0
+endform
+
+if fileReadable (fileNameIn$)
+   sound = do ("Read from file...", fileNameIn$)
+   #name$ = selected$("Sound")
+
+   #To Pitch (ac)... 0.01 60 15 no 0.03 0.7 0.01 0.35 0.14 400
+   #pitch = do ("To Pitch (ac)...",  0.01, 60.0, 15, "no", 0.03, 0.7, 0.01, 0.35, 0.14, 400.0)
+   pitch = do ("To Pitch (ac)...",  timeStep, pitchFloor, maxNoCand, "no", silenceTh, voicingTh, octiveCost, octiveJumpCost, vuCost, pitchCeiling)
+
+   median_f0 = Get quantile... 0 0 0.5 Hertz
+   #mean_period = 1/median_f0
+   mean_period = 0.0081
+
+   selectObject (sound)
+   plusObject (pitch)
+
+   do ("To PointProcess (cc)")
+   labels = do ("To TextGrid (vuv)...", 0.02, mean_period)
+
+   selectObject (labels)
+   do ("Save as short text file...", fileNameOut$)
+
+else
+   writeInfoLine (fileNameIn$, "is not a file")
+endif
