@@ -31,6 +31,7 @@ function [stftg,metag]=stftgrid(stfte,meta,par)
 %                   'magcph'        Interpolate in magnitude domain and use phase from 'cplx' interpolation [default]
 %                   'crmcph'        Interpolate in cube-root power domain and use phase from 'cplx' interpolation
 %   par.interpgrid  [nhop nbin]     Time-frequency interpolation grid is nhop samples and fs/nbin Hz. Will be rounded to integers. [default = mean(metain(:,3)*[1 1]]
+%                                   can be calculated as [flen*fs/ovfact) 2*round(flen*fs/2)] where fs=sample freq (Hz), flen=equivalent frame length (s), ovfact=equivalent overlap factor
 %   par.interpbph   bins_per_hop    Distance in frequency bins that is equivalent to a distance of one hop in time (bins per hop) [default: 1]
 %                                       In different units, this is equivalent to bins_per_hop*fs^2/(nhop*nbin) Hz/second. A high value will tend
 %                                       to smear the spectrogram in the frequency direction while a low value will smear it in the time direction.
@@ -42,6 +43,8 @@ function [stftg,metag]=stftgrid(stfte,meta,par)
 %
 % Bugs/Suggestions:
 % (1) Does not currently work well for very short frames (<7 samples)
+% (2) Code for calculating the group delay for each fixed frame does not take account of the data content
+% (3) If fixed frame hop is large then some input frames may have no effect on the output (this may or may not be a problem)
 % 
 persistent q0
 %
@@ -84,15 +87,12 @@ else
     % msk=~isnan(stftvv);
     stftvv=stftvv(msk);                                 % eliminate non-existant entries from stft
     taxv=taxv(msk);                                     % ... and time coordinate in samples
-    faxv=faxv(msk);                                     % and frequency coordinate in fractions of fs
+    faxv=faxv(msk);                                     % ... and frequency coordinate in fractions of fs
     nhop=q.interpgrid(1);                               % frame hop in samples
     nbin=q.interpgrid(2);                               % effective fft length (not necessarily even)
     nbinp=1+floor(nbin/2);                              % number of positive output frequencies
     frst=max(ceil(taxi(1)-0.5*nbin+1.5),meta(1,1));     % start of first fixed frame in samples (frame-centre >= taxi(1)+1 and frame-start>=meta(1,1))
-        % frst=max(ceil(taxi(1)-0.5*nhop+1.5),meta(1,1));     % start of first fixed frame in samples (frame-centre >=taxi(1)+1 to ensure no extrapolation at start)
-    % frst=max(meta(1,1:2)*[1;0.5]-nbinp,1); % start of first fixed frame in samples (to ensure no extrapolation at start)
     nframef=floor(min((taxi(end)-frst-0.5-nbin*0.5)/nhop+1,(meta(end,1:2)*[1;1]-frst-nbin)/nhop+1));  % Num frames (frame-centre <= taxi(end)-1 and frame-end<=meta(end,1)+meta(end,2)-1)
-    % nframef=1+floor(min((meta(end,1:2)*[2;1]-1-nbin-2*frst-1)/(2*nhop),(length(s)-frst-nbin+1)/nhop)); % #frames (to ensure no extrapolation at end)
     if nframef>0
         metag=[frst+(0:nframef-1)'*nhop repmat([nbin nbin 0 1 0],nframef,1)];   % output metadata
         faxf=(0:nbinp-1)/nbin;                              % positive frequencies of fixed frame dft in fractions of fs
@@ -117,8 +117,17 @@ else
                 msk=vqa~=0;                                 % complex phase irrelevant if vqa==0
                 vq(msk)=vq(msk)./vqa(msk).*vqc(msk);        % magnitude from vq and phase from vqc unless vqc==0
         end
-        % [xxi,xxf]=v_interval(taxf,taxi);
         stftg=reshape(vq,nframef,[]);                       % stft has one row per frame
+        % Calculate goup delay of output frames by using linear interpolation between the group delays of the input frames whose centres are either side of the
+        % centre of the output frame while compensating for the starting sample of each of the frames.
+        [xxi,xxf]=v_interval(taxf,taxi);                    % i'th fixed frame centre, taxf(i), lies between taxi(xxi(i)) and taxi(xxi(i)+1)
+        msk=xxf>0.5;                                        % mask for fixed frames closer to xxi(i)+1 than to xxi(i)
+        wtj=1-msk-(1-2*msk).*xxf;                           % weight to apply to gdfj below: 1-xxf(i) if msk(i)=0 or xxf(i) if mask(i)=1
+        xxj=xxi+msk;                                        % taxf(i) is closest to  taxi(xxj(i))
+        xxk=xxi+1-msk;                                      % other end of interval
+        gdfj=v_modsym(meta(xxj,1)+meta(xxj,6),meta(xxj,3),taxf);    % add multple of DFT length to get assumed energy peak near centre of output frame 
+        gdfk=v_modsym(meta(xxk,1)+meta(xxk,6),meta(xxk,3),gdfj);    % add multple of DFT length to get assumed energy peak near previous one 
+        metag(:,6)=gdfj.*wtj+gdfk.*(1-wtj)-metag(:,1);      % group delay of fixed frame in samples: linear interpolate between gdfj and gdfk then compensate for start of frame
         if mod(nbin,2)>0                                    % nbin is odd
             stftg=[real(stftg(:,1)) stftg(:,2:end) conj(stftg(:,end:-1:2))]; % force conjugate symmetry
         else                                                % nbin is even
