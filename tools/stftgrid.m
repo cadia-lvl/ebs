@@ -6,7 +6,7 @@ function [stftg,metag]=stftgrid(stfte,meta,par)
 %
 %  Inputs: stfte(nframe,maxbin)     complex STFT coefficients
 %          meta(nframe,nmeta)       metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay (samples)]
-%                                       although only the first three columns are used
+%                                       although only columns 1,2,3 and 6 are currently used
 %          maxfft                   max size of frame in stft domain [default: max(metain(:,2))]
 %          par                      parameter structure containing optional parameters
 %                                       =Parameter=     =Default=   =Description=
@@ -24,9 +24,9 @@ function [stftg,metag]=stftgrid(stfte,meta,par)
 %   par.interpstft  'none'          No STFT interpolation [default]
 %                   'nearest'       Nearest-neighbour interpolation
 %                   'linear'        Linear interpolation used in griddata.m
-%                   'natural'       Uses Voronoi cells to determine neighbours for linear interpolation in griddata.m [1] [default]
+%                   'natural'       Uses Voronoi cells to determine neighbours for linear interpolation in griddata.m [ref 1] [default]
 %                   'cubic'         Cubic spline interpolation in griddata.m
-%                   'v4'            MATLAB 4 method uses biharmonic spline interpolation in griddata.m [2]
+%                   'v4'            MATLAB 4 method uses biharmonic spline interpolation in griddata.m [ref 2]
 %   par.interpdom   'cplx'          Interpolate in the complex domain
 %                   'magcph'        Interpolate in magnitude domain and use phase from 'cplx' interpolation [default]
 %                   'crmcph'        Interpolate in cube-root power domain and use phase from 'cplx' interpolation
@@ -68,9 +68,9 @@ if isempty(q.interpgrid)                                % no value specified for
 else
     q.interpgrid=round(q.interpgrid);                   % force integer values for the interpolation grid
 end
-if strcmp(q.interpstft,'none')
-    stftg=stfte;
-    metag=meta;
+if strcmp(q.interpstft,'none')                          % no interpolation requested ...
+    stftg=stfte;                                        % ... copy across stft ...
+    metag=meta;                                         % ... and meta data
 else
     if size(meta,2)<6
         meta(1,6)=0;                                    % enlarge meta to 6 columns if necessary
@@ -82,9 +82,7 @@ else
     %%%% this doesn't work well for frames less than 7 samples long (luckily these are probably rare)
     nfftq=round(0.25*meta(:,3));                        % last quarter of of each row counts as negative frequencies
     faxv=reshape((mod(repmat(0:maxbin-1,nframe,1)+repmat(nfftq,1,maxbin),meta(:,3))-repmat(nfftq,1,maxbin))./repmat(meta(:,3),1,maxbin),[],1); % bins in fractions of fs
-    % faxv=reshape((fs./meta(:,3))*(0:maxbin-1),[],1);
     msk=reshape(repmat(0:maxbin-1,nframe,1)<meta(:,3),[],1);    % first meta(:,3) entries in each row
-    % msk=~isnan(stftvv);
     stftvv=stftvv(msk);                                 % eliminate non-existant entries from stft
     taxv=taxv(msk);                                     % ... and time coordinate in samples
     faxv=faxv(msk);                                     % ... and frequency coordinate in fractions of fs
