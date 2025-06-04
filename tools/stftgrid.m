@@ -121,8 +121,8 @@ else
         [xxi,xxf]=v_interval(taxf,taxi);                    % i'th fixed frame centre, taxf(i), lies between taxi(xxi(i)) and taxi(xxi(i)+1)
         msk=xxf>0.5;                                        % mask for fixed frames closer to xxi(i)+1 than to xxi(i)
         wtj=1-msk-(1-2*msk).*xxf;                           % weight to apply to gdfj below: 1-xxf(i) if msk(i)=0 or xxf(i) if mask(i)=1
-        xxj=xxi+msk;                                        % taxf(i) is closest to  taxi(xxj(i))
-        xxk=xxi+1-msk;                                      % other end of interval
+        xxj=xxi(:)+msk;                                        % taxf(i) is closest to  taxi(xxj(i))
+        xxk=xxi(:)+1-msk;                                      % other end of interval
         gdfj=v_modsym(meta(xxj,1)+meta(xxj,6),meta(xxj,3),taxf);    % add multple of DFT length to get assumed energy peak near centre of output frame 
         gdfk=v_modsym(meta(xxk,1)+meta(xxk,6),meta(xxk,3),gdfj);    % add multple of DFT length to get assumed energy peak near previous one 
         metag(:,6)=gdfj.*wtj+gdfk.*(1-wtj)-metag(:,1);      % group delay of fixed frame in samples: linear interpolate between gdfj and gdfk then compensate for start of frame
