@@ -1,4 +1,12 @@
 function [stftg,metag]=stftgrid(stfte,meta,par)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% This routine is now *OBSOLETE*, replace with:                                                                 %
+%                                                                                                               %
+%       par.interpfsps=par.interpbph/(par.interpgrid(1)*par.interpgrid(2));                                     %  
+%       grid=[max(ceil(meta(1,1)+0.5*(meta(1,2)-1-par.interpgrid(2)+3)),meta(1,1)) par.interpgrid([2 1])];      %
+%       [stft,meta]=stftegrid(stft,meta,grid,par);                                                              %
+%                                                                                                               %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Interpolation of variable frame length STFT onto a regular grid
 %
 % Usage:    [stft,meta,grpd]=stfte(s,metain,[],par);                    % epoch-based STFT
@@ -11,7 +19,7 @@ function [stftg,metag]=stftgrid(stfte,meta,par)
 %          par                      parameter structure containing optional parameters
 %                                       =Parameter=     =Default=   =Description=
 %                                       par.interpstft  'none'      interpolation method in griddata: {'none','nearest','linear','natural','cubic','v4'}
-%                                       par.interpHzps  1           Distance in frequency bins that is equivalent to a distance of one hop in time (bins per hop)
+%                                       par.interpbph   1           Distance in frequency bins that is equivalent to a distance of one hop in time (bins per hop)
 %                                       par.interpdom   'cplx'      Interpolate domain: {'cplx','magcph','crmcph'}
 %                                       par.interpgrid  [...]       [nhop nbin] gives a time-frequency interpolation grid of nhop samples and fs/nbin Hz.
 %                                                                   [nhop nbin] will be rounded to integers. If unspecified or empty, par.interpgrid = mean(meta(:,3)*[1 1].

@@ -38,7 +38,7 @@ nconfig=length(configpars);                   % number of configurations
 %          15       Bar-graph of within-phone complex variance
 %    ... plots for each configuration (added to configuration number).
 %         100+      "spectrogram" of STFT
-%         200+      "spectrogram" of interpolated STFT (only if par.interpgrid~='none')
+%         200+      "spectrogram" of interpolated STFT (only if par.interpstft~='none')
 %         300+      Bhattacharyya divergence within each phone
 %
 plotlist=[1:4 9:10 12:15 100];       % list of graphs to plot
@@ -75,12 +75,12 @@ par0.scale=       'none';            % scaling method: {'none','peakabs','rms'}
 par0.pad=         'none';            % zero-padding method: {'none','zero','ends'}
 par0.groupdelay=  'none';            % linear phase component: {'none','dct','ewgd','ewgdint','cplx','cplxint','xcor'}
 % = stftgrid =
-par0.interpstft=  'none';            % interpolation method for call to griddata: {'none','nearest','linear','natural','cubic','v4'}
-par0.interpgrid= [];                 % par.interpgrid=[nhop nbin] is calculated below from par.interpflen, par.interpov and fs
+par0.interpstft=  'none';            % interpolation method for call to griddata: {'none','indep','nearest','linear','natural','cubic','v4'}
 par0.interpflen=  0.007;             % target frame length in seconds (reciprocal of frequency-grid spacing) [0.01]
 par0.interpov=    1;                 % overlap factor; 1 for no overlap, 2 for 50%; time grid-spacing is par.interpflen/par.interpov
-par0.interpbph=  0.196;              % time-frequency distance tradeoff in bins/hop
 par0.interpdom=   'cplx';            % interpolation domain: {'cplx','magcph','crmcph'}
+par0.interpfsps=   1e-5              % interpolation scale factor: fs^-2 multiplied by the distance in Hz that is equivalent to a distance of one second (fs per sample)
+par0.interpext=    'omit'            % Handling of extrapolated frames: {'omit','zero','rep','refl'}
 % = stfte2melc
 par0.fbank=       'm';               % filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel}
 par0.keepDC=      1;                 % preserve DC as the lowest MEL bin {0, 1}
@@ -126,8 +126,7 @@ for icfg=1:nconfig                                          % loop through param
     cfnames{icfg}=par.cfname;                                   % save configuration name
     nhopf=round(par.interpflen*fs/par.interpov);                % frame hop for fixed frames in samples
     nbinf=2*round(par.interpflen*fs/2);                         % effective dft length (always even) for fixed frames
-    par.interpgrid=[nhopf nbinf];                               % save frame hop and number of bins as a parameter for stftgrid
-    interphzps=par.interpbph*fs^2/(nhopf*nbinf);                % convert from bins/hop to Hz per second
+    interphzps=par.interpfsps*fs^2;                             % convert interpolation scale factor from fs/sample to Hz/s
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %  process the current configuration  %
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -146,12 +145,14 @@ for icfg=1:nconfig                                          % loop through param
     framelim=[[1 frameend(1:end-par.ovfact)+1];frameend(par.ovfact:end)];   % start and end of each frame (sample indices)
     metain=[framelim(1,:);1+[-1 1]*framelim]';                  % one row per frame: [start-sample frame-length]
     [stft,meta,grpd]=stfte(s,metain,[],par);                    % epoch-based STFT
-    [stft,meta]=stftgrid(stft,meta,par);                        % optionally map onto a fixed grid
-    tax=(meta(:,1:2)*[1;0.5]-0.5)'/fs;                          % time axis (frame centres in seconds, 1st sample @ 1/fs)
+    % [stft,meta]=stftgrid(stft,meta,par);                      % OLD: optionally map onto a fixed grid and update stft and meta
+    grid=[meta(1,1) round(par.interpflen*fs) round(par.interpflen*fs/par.interpov)];      % [firstsamp ndft nhop] for uniform grid
+    [stft,meta]=stftegrid(stft,meta,grid,par);                  % optionally map onto a fixed grid
+    tax=(meta(:,1:2)*[1;0.5]-0.5)/fs;                          % time axis (frame centres in seconds, 1st sample @ 1/fs)
     nfftmax=size(stft,2);
     nfftp=1+floor(nfftmax/2); % number of positive frequencies
     fax=(0:nfftp-1)*fs/nfftmax; % frequency bins in Hz
-    framephn=v_interval(tax,[phnlim(:,1);phnlim(end,2)],'cC');  % determine phone index for each frame
+    framephn=v_interval(tax(:),[phnlim(:,1);phnlim(end,2)],'cC');  % determine phone index for each frame
     framephnlim=cumsum(full(sparse(framephn,1,1)));
     framephnlim=[[1;framephnlim(1:end-1)+1] framephnlim]; % first and last frames corresponding to each phone (empty if last<first)
     framephntype=phntyp(framephn);   % map to a reduced set of phone types (as listed in phncls2typ)
@@ -247,21 +248,7 @@ for icfg=1:nconfig                                          % loop through param
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     if any(plotlist==100)                                   % plot "spectrogram" of STFT
         figure(100+icfg);
-        imagesc(tax,fax,db(abs(stft(:,1:nfftp)))');
-        axis 'xy';
-        set(gca,'clim',get(gca,'clim')*[0;1]+[-40 0]);      % limit range to 40 dB
-        colorbar;
-        if all(meta(:,3)==meta(1,3))
-            xlabel('Time (s)');
-            ylabel('Freq (Hz)');
-        else
-            hold on
-            plot(tax,fax(1+floor(meta(:,3)/2)),'-w'); % plot Nyquist frequewncy as a white line
-            v_texthvc(0.03,0.98,'— = Nyquist','LTw');
-            hold off
-            xlabel('Approx Time (s)');
-            ylabel('Max Freq (Hz)');
-        end
+        stfteplot(stft,meta,fs,40);
         if strcmp(par.interpstft,'none')
             title(cfnames{icfg});
         else

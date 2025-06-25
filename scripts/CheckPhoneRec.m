@@ -35,7 +35,7 @@ configpars={
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 parplt=[1:10]; 								% configurations to plot
 pltsel=[1 7 300:100:800]; 				    % list of plots to do
-% nfile=[100 100];                      		% number of TIMIT files for training and testing
+% nfile=[100 100];                      	  % number of TIMIT files for training and testing
 nfile=[10 10];                      		% number of TIMIT files for training and testing
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -63,12 +63,12 @@ par0.scale=       'none';            % scaling method: {'none','peakabs','rms'}
 par0.pad=         'none';            % zero-padding method: {'none','zero','ends'}
 par0.groupdelay=  'none';            % linear phase component: {'none','dct','ewgd','ewgdint','cplx','cplxint','xcor'}
 % = stftgrid =
-par0.interpstft=  'none';            % interpolation method for call to griddata: {'none','nearest','linear','natural','cubic','v4'}
-par0.interpgrid= [];                 % par.interpgrid=[nhop nbin] is calculated below from par.interpflen, par.interpov and fs
-par0.interpflen=  0.007;             % target frame length in seconds (reciprocal of frequency-grid spacing) [0.01]
-par0.interpov=    1;                 % overlap factor; 1 for no overlap, 2 for 50%; time grid-spacing is par.interpflen/par.interpov
-par0.interpbph=   0.196;             % time-frequency distance tradeoff in bins/hop
+par0.interpstft=  'none';            % interpolation method for call to griddata: {'none','indep','nearest','linear','natural','cubic','v4'}
+par0.interpflen=  0.007;             % interpolation target frame length in seconds (reciprocal of frequency-grid spacing in Hz) [0.01]
+par0.interpov=    1;                 % interpolation overlap factor; 1 for no overlap, 2 for 50%; inter-frame hop is par.interpflen/par.interpov
 par0.interpdom=   'cplx';            % interpolation domain: {'cplx','magcph','crmcph'}
+par0.interpfsps=   1e-5              % fs^-2 multiplied by the distance in Hz that is equivalent to a distance of one second (fs per sample)
+par0.interpext=    'omit'            % Handling of extrapolated frames: {'omit','zero','rep','refl'}
 % = stfte2melc
 par0.nmel=        29;                % number of mel bins = 29 @ 16kHz
 par0.fbank=       'm';               % filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel}
@@ -115,10 +115,6 @@ acc=zeros(1,ncfg); % overall accuracy
 for icfg=1:ncfg                                         % loop through parameter configurations
     [par,partxt]=parupdate(par0,configpars{icfg},parvar,'%cfname%: $c&=%&%$, $'); % Set up the parameters for this trial
     cfnames{icfg}=par.cfname;                                   % save configuration name
-    nhopf=round(par.interpflen*fs/par.interpov);                % frame hop for fixed frames in samples
-    nbinf=2*round(par.interpflen*fs/2);                         % effective dft length (always even) for fixed frames
-    par.interpgrid=[nhopf nbinf];                               % save frame hop and number of bins as a parameter for stftgrid
-    interphzps=par.interpbph*fs^2/(nhopf*nbinf);                % convert from bins/hop to Hz per second
     %
     % derived parameters that depend on parameter configuration
     %
@@ -246,7 +242,9 @@ for icfg=1:ncfg                                         % loop through parameter
                 framelen=1+[-1 1]*framelim;                         % length of each frame in samples
                 metain=[framelim(1,:);framelen]';
                 [stft,meta]=stfte(s,metain,[],par);                 % epoch-based STFT
-                [stft,meta]=stftgrid(stft,meta,par);                % optionally map onto a fixed grid and update stft and meta
+                % [stft,meta]=stftgrid(stft,meta,par);              % OLD: optionally map onto a fixed grid and update stft and meta
+                grid=[meta(1,1) round(par.interpflen*fs) round(par.interpflen*fs/par.interpov)];      % [firstsamp ndft nhop] for uniform grid
+                [stft,meta]=stftegrid(stft,meta,grid,par);          % optionally map onto a fixed grid
                 [melbm,melbu,cfhz,mbm]=stfte2melc(stft,fs,par.nmel,par);
                 c=mel2melcep(melbm,par.wcep,par.ncep);              % calculate the mel-cepstrum feature vector, c
                 tc=(meta(:,1:2)*[1;0.5]-1.5)/fs;                    % frame centres in seconds (1st sample @ zero)
