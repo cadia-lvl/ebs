@@ -2,7 +2,7 @@ function [stftg,metag]=stftegrid(stfte,meta,grid,par)
 % Interpolation of variable frame length STFT onto a regular grid
 %
 % Usage:    [stft,meta,grpd]=stfte(s,metain,[],par);                    % epoch-based STFT
-%           [stft,meta]=stftgrid(stft,meta,grid,par);                        % map onto a fixed grid unless par.interpstft='none'
+%           [stft,meta]=stftegrid(stft,meta,grid,par);                        % map onto a fixed grid unless par.interpstft='none'
 %
 %  Inputs: stfte(nfin,maxbin)     complex STFT coefficients
 %          meta(nfin,nmeta)       metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay (samples)]

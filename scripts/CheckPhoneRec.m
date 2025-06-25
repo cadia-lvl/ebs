@@ -62,7 +62,7 @@ par0.offset=      'none';            % offset removal: {'none','mean'}
 par0.scale=       'none';            % scaling method: {'none','peakabs','rms'}
 par0.pad=         'none';            % zero-padding method: {'none','zero','ends'}
 par0.groupdelay=  'none';            % linear phase component: {'none','dct','ewgd','ewgdint','cplx','cplxint','xcor'}
-% = stftgrid =
+% = stftegrid =
 par0.interpstft=  'none';            % interpolation method for call to griddata: {'none','indep','nearest','linear','natural','cubic','v4'}
 par0.interpflen=  0.007;             % interpolation target frame length in seconds (reciprocal of frequency-grid spacing in Hz) [0.01]
 par0.interpov=    1;                 % interpolation overlap factor; 1 for no overlap, 2 for 50%; inter-frame hop is par.interpflen/par.interpov
