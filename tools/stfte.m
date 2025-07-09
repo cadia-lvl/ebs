@@ -10,6 +10,7 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %                                       par.offset      'none'      offset removal: {'none','mean','ends'}
 %                                       par.scale       'none'      scaling method: {'none','peakabs','rms'}
 %                                       par.pad         'none'      zero-padding method: {'none','zero','ends'}
+%                                       par.gcifrac     0           position of GCI in analysis frame. Only used if the par.groupdelay='gcif' option is selected.
 %                                       par.groupdelay  'none'      linear phase component: {'none','dct','ewgd','cplx','phgr','gcif','gpdf','fmnb','xcor'} + optional 'int' suffix
 %                                       par.fmbound     [0.3 0.5]   group delay bounds for par.groupdelay='fmnb'
 %
@@ -43,7 +44,7 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %                   'cplx'      As ewgd but convert position in frame to a complex number before doing the energy-weighted
 %                               average. This mirrors the circularity of the DFT.
 %                   'phgr'      Calculate the enegrgy-weighted phase decrement beween successive frequency bins in the DFT output
-%                   'gcif'      Take group delay equal to par.gcifrac multiplied by the frame length, meta(:,2).
+%                   'gcif'      Take group delay equal to par.gcifrac multiplied by the frame length, meta(:,2). Note that par.gcifrac defaults to 0 unless it is explicitly specified.
 %                   'gpdf'      Take group delay equal to par.gpdfrac multiplied by the frame length, meta(:,2) [default=0.3].
 %                   'fmnb'      Find optimum group delay subject to bounds par.fmbound as fraction of frame length [default bounds = [0.3 0.5]].
 %                               'fmnb' minimizes an energy-weighted average of 1-cos(phi). It is quite slow.
