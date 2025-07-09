@@ -35,7 +35,7 @@ else
     end
     clab="Value (dB)";
 end
-clf;                                                                            % clear figure: should maybe check first if "hold" is on
+cla;                                                                            % clear figure: should maybe check first if "hold" is on
 patch(patx/fs,paty*fs,patcm(patxv)','EdgeColor','none');
 cbh=colorbar;
 set(gca,'clim',clim,'xlim',[fre(1) fre(end)]/fs,'ylim',[0 0.5*fs]);

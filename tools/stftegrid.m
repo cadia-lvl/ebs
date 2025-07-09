@@ -86,7 +86,7 @@ else                                                        % we need interpolat
     finfix=all(meta(:,3)==meta(1,3));                       % true if input DFT length is fixed
     foutfix=all(grid(:,2)==grid(1,2));                      % true if output DFT length is fixed
     % sort out output grid
-    if length(grid)==3 % grid=[firstsamp ndft nhop]
+    if length(grid)==3                                      % grid=[firstsamp ndft nhop]
         nhop=grid(3);                                       % frame hop in samples
         nbin=grid(2);                                       % effective fft length (not necessarily even)
         frst=grid(1);
