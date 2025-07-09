@@ -13,7 +13,7 @@ function [stftg,metag]=stftegrid(stfte,meta,grid,par)
 %                                       par.interpstft  'none'      interpolation method in griddata: {'none','indep','nearest','linear','natural','cubic','v4'}
 %                                       par.interpfsps  1e-5        fs^-2 multiplied by the distance in Hz that is equivalent to a distance of one second (fs per sample)
 %                                       par.interpdom   'cplx'      Interpolation domain: {'cplx','magcph','crmcph'}
-%                                       par.interpext   'omit'      Handling of extrapolated frames: {'omit','zero','rep','refl'}
+%                                       par.interpext   'rep'      Handling of extrapolated frames: {'omit','zero','rep','refl'}
 %
 % Outputs: stftg(nfout,nbin)       complex STFT coefficients
 %          metag(nfout,nmeta)      output metadata with same column count as the input meta. metag(*,:)=[first-sample, frame-length=nbin, dft-length=nbin, 0, 1, 0]
@@ -61,7 +61,7 @@ if isempty(q0)
     q0.interpstft='natural';            % Interpolation method in griddata: {'none','nearest','linear','natural','cubic','v4'}
     q0.interpfsps=1e-5;                     % Distance in frequency bins that is equivalent to a distance of one hop time (bins per hop)
     q0.interpdom='magcph';              % Interpolatione domain: {'cplx','magcph','crmcph'}
-    q0.interpext=  'omit';              % handling of extrapolated frames
+    q0.interpext=  'rep';              % handling of extrapolated frames
 end
 %
 % update algorithm parameters
@@ -103,15 +103,16 @@ else                                                        % we need interpolat
         maxbinout=size(stftg,2);                            %   max number of DFT bins in output
         taxin=meta(:,1:2)*[1;0.5]-0.5;                      %   centre of input frames in samples (start @ 1)
         taxout=metag(:,1:2)*[1;0.5]-0.5;                     %   centres of output frames in samples (start @ 1)
-        if strcmp(par.interpext,'omit') && (taxout(1)<taxin(1) || taxout(end)>taxin(end))                 % we need to delete some frames
-            msk=taxout<taxin(1) | taxout>taxin(end);        % output frames that require extrapolation
+        interpindep=strcmp(q.interpstft,'indep'); % doing 1D interpolation
+        if strcmp(par.interpext,'omit')                % we may need to delete some frames
+            msk=taxout<=taxin(1)-interpindep | taxout>=taxin(end)+interpindep;        % output frames that require extrapolation (less stringent for 1D)
             taxout(msk)=[];                                 % delete frame frame-centre list
             metag(msk,:)=[];                                % and from output metadata
             nfout=length(taxout);                           % revised number of output frames
         end
         if nfout>0                                          % check again if there are any frames to output
             stftg=NaN(nfout,maxbinout);                     % space for output STFT
-            if strcmp(q.interpstft,'indep')                 % if independent interpolation in time and frequency ...
+            if interpindep                 % if independent interpolation in time and frequency ...
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % 1D Interpolation is performed in three stages:                            %
                 %   (1) frequency interpolation onto an intermediate frequency grid (nbinx) %
