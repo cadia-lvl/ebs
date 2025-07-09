@@ -67,8 +67,8 @@ par0.interpstft=  'none';            % interpolation method for call to griddata
 par0.interpflen=  0.007;             % interpolation target frame length in seconds (reciprocal of frequency-grid spacing in Hz) [0.01]
 par0.interpov=    1;                 % interpolation overlap factor; 1 for no overlap, 2 for 50%; inter-frame hop is par.interpflen/par.interpov
 par0.interpdom=   'cplx';            % interpolation domain: {'cplx','magcph','crmcph'}
-par0.interpfsps=   1e-5              % fs^-2 multiplied by the distance in Hz that is equivalent to a distance of one second (fs per sample)
-par0.interpext=    'omit'            % Handling of extrapolated frames: {'omit','zero','rep','refl'}
+par0.interpfsps=   1e-5;              % fs^-2 multiplied by the distance in Hz that is equivalent to a distance of one second (fs per sample)
+par0.interpext=    'omit';            % Handling of extrapolated frames: {'omit','zero','rep','refl'}
 % = stfte2melc
 par0.nmel=        29;                % number of mel bins = 29 @ 16kHz
 par0.fbank=       'm';               % filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel}
