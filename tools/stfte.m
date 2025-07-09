@@ -36,6 +36,7 @@ function [stft,meta,grpd]=stfte(s,metain,maxfft,par)
 %   par.pad         'none'      No padding is performed so dft-length for each frame equals the frame length and meta(:,3)=meta(:,2) [default]
 %                   'zero'      Pad each frame with zeros to a length of maxfft
 %                   'ends'      Padd each frame with the average of the end values to a length of maxfft
+%   par.gcifrac                 position of GCI in analysis frame used only by par.groupdela='gcif' option below [0]
 %   par.groupdelay  'none'      No group delay compensation is performed so meta(:,6)=0 (i.e. zero samples delay) [default]
 %                   'dct'       Use DCT rather than DFT (so no phases)
 %                   'ewgd'      Take group delay equal to the centre of gravity of the energy of the frame after padding
@@ -63,6 +64,7 @@ if isempty(q0)
     q0.scale='none';                    %  scaling method: {'none','peakabs','rms','len','sqlen'}
     q0.pad='none';                      % zero-padding method: {'none','zero','ends'}
     q0.groupdelay='none';               % linear phase component: {'none','dct','ewgd','cplx','phgr','gcif','gpdf','fmnb' + optional 'int' suffix}
+    q0.gcifrac=0;                       % fraction of frame length for par.groupdelay='gpdf' option
     q0.gpdfrac=0.3;                     % fraction of frame length for par.groupdelay='gpdf' option
     q0.fmbound=[0.3 0.5];               % bounds for group delay option par.groupdelay='fmbd' as fraction of frame length
     q0.window='r';                      % window: 'r'=rectangular, 'n'=hanning, 'm'=hamming
@@ -127,11 +129,6 @@ if strcmp(q.pad,'none')                                     % if no padding
 else                                                        % need to include padding
     meta(:,3)=maxfft;                                       % dft length equals maxfft
 end
-if isfield(par,'gcifrac')
-    gcif=par.gcifrac;
-else
-    gcif=0;
-end
 if all(framelens==framelens(1))                             % all frames are the same length so we can do them all at once
     framelen=framelens(1);                                  % constant frame length for all frames
     if strcmp(q.pad,'ends') && framelen~=maxfft             % we need to pad frames with the average of the endpoints
@@ -154,9 +151,9 @@ if all(framelens==framelens(1))                             % all frames are the
                 case 'phgr'
                     meta(:,6)=angle(sum(stft(:,1:nfft-1).*conj(stft(:,2:nfft)),2)./sum(abs(stft(:,1:nfft-1).*stft(:,2:nfft)),2))*nfft/(2*pi);
                 case 'gcif'
-                    meta(:,6)=meta(:,2)*gcif;
+                    meta(:,6)=meta(:,2)*q.gcifrac;
                 case 'gpdf'
-                    meta(:,6)=meta(:,2)*par.gpdfrac;
+                    meta(:,6)=meta(:,2)*q.gpdfrac;
                 case 'fmnb'
                     for i=1:nframe
                         meta(i,6)=fminbnd(@(g) gderr(g,stft(i,1:nfft)),q.fmbound(1)*(framelen-1),q.fmbound(2)*(framelen-1)); % find optimum
@@ -198,9 +195,9 @@ else                                                        % we must process fr
                     case 'phgr'
                         meta(i,6)=mod(angle(stft(i,2:nfft-1)*stft(i,3:nfft)'/sum(abs(stft(i,2:nfft-1).*stft(i,3:nfft))))*nfft/(2*pi),nfft); % omit DC from calculation
                     case 'gcif'
-                        meta(i,6)=meta(i,2)*gcif;
+                        meta(i,6)=meta(i,2)*q.gcifrac;
                     case 'gpdf'
-                        meta(i,6)=meta(i,2)*par.gpdfrac;
+                        meta(i,6)=meta(i,2)*q.gpdfrac;
                     case 'fmnb'
                         % meta(i,6)=fminbnd(@(g) gderr(g,stft(i,1:nfft)),q.fmbound(1)*(framelen-1),q.fmbound(2)*(framelen-1)); % find optimum
                         [xx,yy,bb]=fftgdopterr(stft(i,1:nfft));                             % initial call computes fixed quantities for optimization
