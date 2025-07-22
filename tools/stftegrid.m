@@ -7,7 +7,8 @@ function [stftg,metag]=stftegrid(stfte,meta,grid,par)
 %  Inputs: stfte(nfin,maxbin)     complex STFT coefficients
 %          meta(nfin,nmeta)       metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay (samples)]
 %                                       although only columns 1,2,3 and 6 are currently used
-%          grid                     specifies the target grid in samples (starting @ 1): either [firstsamp(nfout) ndft(nfout)] for each frame or [firstsamp ndft nhop] for a uniform grid
+%          grid                     specifies the target grid in samples (starting @ 1): either [firstsamp(nfout) framelen(nfout) ndft(nfout)] for each frame or [firstsamp framelen ndft nhop] for a uniform grid
+%                                   NOTE: for backward compatibility [firstsamp(nfout) ndft(nfout)] for each frame or [firstsamp ndft nhop] for a uniform grid is also accepted
 %          par                      parameter structure containing optional parameters
 %                                       =Parameter=     =Default=   =Description=
 %                                       par.interpstft  'none'      interpolation method in griddata: {'none','indep','nearest','linear','natural','cubic','v4'}
@@ -30,12 +31,20 @@ function [stftg,metag]=stftegrid(stfte,meta,grid,par)
 %   par.interpdom   'cplx'          Interpolate in the complex domain
 %                   'magcph'        Interpolate in magnitude domain and use phase from 'cplx' interpolation [default]
 %                   'crmcph'        Interpolate in cube-root power domain and use phase from 'cplx' interpolation
-%   par.interfsps   fs/sample       fs^-2 multiplied by the distance in Hz that is equivalent to a distance of one second (fs per sample) [default: 1e-5]
+%   par.interfsps   fs/sample       Dimensionless factor: fs^-2 multiplied by the distance in Hz that is equivalent to a distance of one second [default: 1e-5]
 %                                       A high value will tend to smear the spectrogram in the frequency direction while a low value will smear it in the time direction.
 %   par.interpext   'omit'          Do not include any extrapolated frames [default]
 %                   'zero'          Assume preceding/following input frames are zero
 %                   'rep'           Assume preceding/following input frames replicate existing end frames
 %                   'refl'          Reflect the preceding/following input frames
+%   par.interpgd    'none'          Group delay in output metadata will equal zero for all frames
+%                   'lin'           Group delay in output metadata will be linearly interpolated based on frame centres while compensating for frame starting positions
+%                   'linrep'        as for option 'lin' but input values will be interpreted modulo the DFT length
+%   par.interpof    'none'          Offset in output metadata will equal zero for all frames
+%                   'lin'           Offset in output metadata will be linearly interpolated based on frame centres
+%   par.interpsc    'none'          Scale in output metadata will equal zero for all frames
+%                   'lin'           Scale in output metadata will be linearly interpolated based on frame centres
+%                   'log'           Scale in output metadata will be linearly interpolated in the log domain based on frame centres
 %
 % Refs: [1] Sibson, R. (1981). "A brief description of natural neighbor interpolation (Chapter 2)".
 %           In V. Barnett. Interpreting Multivariate Data.  Chichester: John Wiley. pp. 21--36.
@@ -43,32 +52,34 @@ function [stftg,metag]=stftegrid(stfte,meta,grid,par)
 %           Geophysical Research Letters, 2, 139-142. 1987.
 %
 % Bugs/Suggestions:
-% (1) Does not currently work well for very short frames (<7 samples)
-% (2) Code for calculating the group delay for each fixed frame does not take account of the data content or the length of the frame
+% (1) Does not currently work well for very short frames (<7 samples). We should instead calculate precisely which additional freqency bins are needed (similar to ninpre/ninpost)
+% (2) Interpolation weights do not take account of the data content or the length of the frame (just the location of the frame centre). This might matter for the metadata
 % (3) If fixed frame hop is large then some input frames may have no effect on the output (this may or may not be a problem)
-% (4) does not currently deal with scale factor and offset metadata; should apply these before interpolation and recalculate after
-% (5) should have an option for doing time and frequency interpolation independently
-% (6) if par.interpext='refl', should we include a replicate of the first/last frame + correctly replicate group delay information
-% (7) when doint 2D interpolation, the calcuation of ninpre and ninpost should include any frames that might be in range for natural interpolation
-% (8) might be more efficient to merge the three 1-D interpolation steps into a single stage
+% (6) if par.interpext='refl', should we include a replicate of the first/last frame + correctly replicate group delay information?
+% (7) when doing 2D interpolation, the calcuation of ninpre and ninpost should include any frames that might be in range for natural interpolation
+% (8) might be more efficient to merge the three 1-D interpolation steps into a single stage; however the interpolation would then need 8 coefficients rather than 2
 % (9) should perhaps force conjugate symmetry explicitly in 1-D case (e.g. in case DC and Nyquist are not exactly real)
-%
+% (10) when adding extra frame at start and end (see ninpre/ninpost) we need to check that the metadata is corectly calculated
+% (11) would it be more efficient to do 1D interpolation only for positive frequencies and then impose conjugate symmetry at the end (as for 2D)
 persistent q0
 %
 % define default parameters
 %
 if isempty(q0)
-    q0.interpstft='natural';            % Interpolation method in griddata: {'none','nearest','linear','natural','cubic','v4'}
-    q0.interpfsps=1e-5;                     % Distance in frequency bins that is equivalent to a distance of one hop time (bins per hop)
-    q0.interpdom='magcph';              % Interpolatione domain: {'cplx','magcph','crmcph'}
-    q0.interpext=  'rep';              % handling of extrapolated frames
+    q0.interpdom=   'magcph';       % Interpolatione domain: {'cplx','magcph','crmcph'}
+    q0.interpext=   'rep';          % Handling of extrapolated frames: {'omit','zero','rep','refl'}
+    q0.interpstft=  'natural';      % Interpolation method for call to griddata: {'none','indep','nearest','linear','natural','cubic','v4'}
+    q0.interpfsps=  1e-5;           % Dimensionless interpolation scale factor: fs^-2 multiplied by the distance in Hz that is equivalent to a distance of one second
+    q0.interpgd=    'none';         % Interpolation of frame group delay: {'none','lin','linrep'}
+    q0.interpof=    'none';         % Interpolation of frame offset: {'none','lin'}
+    q0.interpsc=    'none';         % Interpolation of frame scale factor: {'none','lin','log'}
 end
 %
 % update algorithm parameters
 if nargin<3
-    q=q0;                                               % just copy default parameters
+    q=q0;                                                   % just copy default parameters
 else
-    q=v_paramsetch(q0,par);                             % update parameters from par input
+    q=v_paramsetch(q0,par);                                 % use the par input to update the parameters in q0
 end
 if strcmp(q.interpstft,'none')                              % no interpolation needed, so ...
     stftg=stfte;                                            % ... copy across stft ...
@@ -86,16 +97,19 @@ else                                                        % we need interpolat
     finfix=all(meta(:,3)==meta(1,3));                       % true if input DFT length is fixed
     foutfix=all(grid(:,2)==grid(1,2));                      % true if output DFT length is fixed
     % sort out output grid
-    if length(grid)==3                                      % grid=[firstsamp ndft nhop]
-        nhop=grid(3);                                       % frame hop in samples
-        nbin=grid(2);                                       % effective fft length (not necessarily even)
-        frst=grid(1);
-        nfout=floor(min((meta(end,1:2)*[1;0.5]-1-frst-nbin*0.5)/nhop+1,(meta(end,1:2)*[1;1]-frst-nbin)/nhop+1));  % Num frames (frame-centre <= taxin(end)-1 and frame-end<=meta(end,1)+meta(end,2)-1)
-        metag=[frst+(0:nfout-1)'*nhop repmat([nbin nbin 0 1 0],nfout,1)];   % output metadata
+    [nfout,grcol]=size(grid);                                 % number of output frames
+    grcol3=grcol==3; % flag for 3 columns
+    if nfout==1 && (grcol==3 || grcol==4)                     % grid = [firstsamp framelen ndft nhop] or, legacy only, [firstsamp ndft nhop]
+        nhop=grid(4-grcol3);                                       % frame hop in samples
+        nbin=grid(3-grcol3);                                       % effective fft length (not necessarily even)
+        frlen=grid(2);                                      % frame length
+        frst=grid(1);                                       % start of first frame
+        nfout=floor(min((meta(end,1:2)*[1;0.5]-1-frst-frlen*0.5)/nhop+1,(meta(end,1:2)*[1;1]-frst-frlen)/nhop+1));  % Num frames (frame-centre <= taxin(end)-1 and frame-end<=meta(end,1)+meta(end,2)-1)
+        metag=[frst+(0:nfout-1)'*nhop repmat([frlen nbin 0 1 0],nfout,1)];   % output metadata
         maxbinout=nbin;
-    else                                                    % grid=[firstsamp(nfout) ndft(nfout)]
+    else                                                    % grid = [firstsamp(nfout) framelen(nfout) ndft(nfout)] or, legacy only, [firstsamp(nfout) ndft(nfout)]
         nfout=size(grid,1);                                 % number of output frames
-        metag=[grid(:,[1 2 2]) repmat([0 1 0],nfout,1)];    % output metadata
+        metag=[grid(:,[1 2 2+grcol3]) repmat([0 1 0],nfout,1)];    % initialize output metadata
         maxbinout=max(grid(:,2));
     end
     stftg=NaN(0,maxbinout);                                 % zero-frame output STFT in case nfout is or becomes zero
@@ -110,7 +124,14 @@ else                                                        % we need interpolat
             metag(msk,:)=[];                                % and from output metadata
             nfout=length(taxout);                           % revised number of output frames
         end
-        if nfout>0                                          % check again if there are any frames to output
+        if nfout>0                                          % check again if there are any frames to output 
+            % stfte=stfte.*exp(-2i*pi*repmat(0:maxbin-1,nfin,1).*repmat((meta(:,1)+meta(:,6))./meta(:,3),1,maxbin)).*repmat(meta(:,5),1,maxbin); % shift origin to sample 0 and undo scaling & group delay
+            % stfte(:,1)=stfte(:,1)+meta(:,4).*meta(:,3);   % add offset*DFT_length
+            for i=1:nfin % for now undo the group delay frame by frame
+                    nfft=meta(i,3);                     % DFT length of this frame
+                     stfte(i,1:nfft)=stfte(i,1:nfft).*exp(-2i*pi/nfft*(meta(i,1)+meta(i,6))*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1])*meta(i,5); % apply non-integer group delay (except to Nyquist frequency)
+                     stfte(i,1)=stfte(i,1)+meta(i,4)*meta(i,3);   % add offset*DFT_length
+            end
             stftg=NaN(nfout,maxbinout);                     % space for output STFT
             if interpindep                 % if independent interpolation in time and frequency ...
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -171,15 +192,15 @@ else                                                        % we need interpolat
                             ttf(tti<ninpre | tti>=ninpre+nfin)=0; % treat extrapolated input points as zeros
                             ttj=min(max(tti-ninpre+1,1),nfin);
                             tti=min(max(tti-ninpre,1),nfin);
-                                     meta=[repmat(meta(1,:),ninpre,1); meta; repmat(meta(end,:),ninpost,1)];
+                            meta=[repmat(meta(1,:),ninpre,1); meta; repmat(meta(end,:),ninpost,1)];
                         case 'rep'     %          Assume preceding/following input frames replicate existing first/last frames
                             ttj=min(max(tti-ninpre+1,1),nfin);
                             tti=min(max(tti-ninpre,1),nfin);
-                                      meta=[repmat(meta(1,:),ninpre,1); meta; repmat(meta(end,:),ninpost,1)];
+                            meta=[repmat(meta(1,:),ninpre,1); meta; repmat(meta(end,:),ninpost,1)];
                         case 'refl'     %    Reflect the preceding/following input frames ????????? should we include a replicate of the first/last frame ???????????
                             ttj=nfin-abs(1+abs(tti-ninpre)-nfin);
                             tti=nfin-abs(1+abs(tti-ninpre-1)-nfin);
-                                 meta=[meta(ninpre+1:-1:2,:); meta; meta(end-1:-1:end-ninpost,:)];
+                            meta=[meta(ninpre+1:-1:2,:); meta; meta(end-1:-1:end-ninpost,:)];
                     end
                 else % no extrapolation needed
                     [tti,ttf]=v_interval(taxout,taxin,'cC');
@@ -283,17 +304,43 @@ else                                                        % we need interpolat
                         stftg(i,:)=[real(stftg(i,1)) stftg(i,2:nbinp-1) real(stftg(i,nbinp)) conj(stftg(i,nbinp-1:-1:2)) NaN(1,maxbinout-nbin)]; % force conjugate symmetry (even nbin)
                     end
                 end
-            end  % end of 1D or 2D interpolation                                                   % if strcmp(q.interpstft,'indep') ... else ... end
+            end                                                     % end of 1D or 2D interpolation: if strcmp(q.interpstft,'indep') ... else ... end
+            % now sort out the interpolation of the metadata
+            [xxi,xxf]=v_interval(taxout,taxin);                                         % i'th fixed frame centre, taxout(i), lies between taxin(xxi(i)) and taxin(xxi(i)+1)
+            % interpolate the frame offset values
+            switch q.interpof
+                case 'lin'
+                    metag(:,4)=meta(xxi,4).*(1-xxf)+meta(xxi+1,4).*xxf;                 % linearly interpolate the frame offset
+            end
+            % interpolate the frame scale factor values
+            switch q.interpsc
+                case 'lin'
+                    metag(:,5)=meta(xxi,5).*(1-xxf)+meta(xxi+1,5).*xxf;                 % linearly interpolate the frame scale factor
+                case 'log'
+                    metag(:,5)=exp(log(meta(xxi,5)).*(1-xxf)+log(meta(xxi+1,5)).*xxf);  % linearly interpolate the log frame scale factor
+            end
             % Calculate goup delay of output frames by using linear interpolation between the group delays of the input frames whose centres are either side of the
             % centre of the output frame while compensating for the starting sample of each of the frames.
-            [xxi,xxf]=v_interval(taxout,taxin);                    % i'th fixed frame centre, taxout(i), lies between taxin(xxi(i)) and taxin(xxi(i)+1)
-            msk=xxf>0.5;                                        % mask for fixed frames closer to xxi(i)+1 than to xxi(i)
-            wtj=1-msk-(1-2*msk).*xxf;                           % weight to apply to gdfj below: 1-xxf(i) if msk(i)=0 or xxf(i) if mask(i)=1
-            xxj=xxi+msk;                                        % taxout(i) is closest to  taxin(xxj(i))
-            xxk=xxi+1-msk;                                      % other end of interval
-            gdfj=v_modsym(meta(xxj,1)+meta(xxj,6),meta(xxj,3),taxout);    % add multple of DFT length to get assumed energy peak near centre of output frame
-            gdfk=v_modsym(meta(xxk,1)+meta(xxk,6),meta(xxk,3),gdfj);    % add multple of DFT length to get assumed energy peak near previous one
-            metag(:,6)=gdfj.*wtj+gdfk.*(1-wtj)-metag(:,1);      % group delay of fixed frame in samples: linear interpolate between gdfj and gdfk then compensate for start of frame
+            switch q.interpgd
+                case 'lin'
+                    metag(:,6)=(meta(xxi,1)+meta(xxi,6)).*(1-xxf)+(meta(xxi+1,1)+meta(xxi+1,6)).*xxf-metag(:,1);                 % linearly interpolate the group delay
+                case 'linrep'
+                    msk=xxf>0.5;                                                % mask for fixed frames closer to xxi(i)+1 than to xxi(i)
+                    wtj=1-msk-(1-2*msk).*xxf;                                   % weight to apply to gdfj below: 1-xxf(i) if msk(i)=0 or xxf(i) if mask(i)=1
+                    xxj=xxi+msk;                                                % taxout(i) is closest to  taxin(xxj(i))
+                    xxk=xxi+1-msk;                                              % other end of interval
+                    gdfj=v_modsym(meta(xxj,1)+meta(xxj,6),meta(xxj,3),taxout);  % add multple of DFT length to get assumed energy peak near centre of output frame
+                    gdfk=v_modsym(meta(xxk,1)+meta(xxk,6),meta(xxk,3),gdfj);    % add multple of DFT length to get assumed energy peak near previous one
+                    metag(:,6)=gdfj.*wtj+gdfk.*(1-wtj)-metag(:,1);              % group delay of fixed frame in samples: linear interpolate between gdfj and gdfk then compensate for start of frame
+            end
+            % compensate the stft values for the metadata
+            for i=1:nfout % for now, apply the group delay frame by frame
+                nfft=metag(i,3);                     % DFT length of this frame
+                stftg(i,1)=stftg(i,1)-metag(i,4)*metag(i,3);   % add offset*DFT_length
+                stftg(i,1:nfft)=stftg(i,1:nfft).*exp(2i*pi/nfft*(metag(i,1)+metag(i,6))*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1])/metag(i,5); % apply non-integer group delay (except to Nyquist frequency)
+            end
+            % stftg(:,1)=stftg(:,1)-metag(:,4).*metag(:,3);                       % subtract offset*DFT_length from STFT
+            % stftg=stftg.*exp(2i*pi*repmat(0:maxbinout-1,nfout,1).*repmat((metag(:,1)+metag(:,6))./metag(:,3),1,maxbinout))./repmat(metag(:,5),1,maxbinout); % shift origin to frame start and apply scaling & group delay
         end                                                         % if nfout>0 ... end; check if any output frames after deleting invalid output frames
     end                                                             % if nfout>0 ... end; initial check if any output frames
 end                                                                 % if strcmp(q.interpstft,'none') ... else ... end; check if any interpolation to be done
