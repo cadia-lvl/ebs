@@ -1,4 +1,3 @@
-% Test interpolation of epoch-based STFT frames onto fixed grid
 % clear;
 close all;
 timit=gettimitpath;                         % get path to timit subfolder of timit database

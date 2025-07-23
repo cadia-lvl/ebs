@@ -1,6 +1,13 @@
 function [sout,vout]=w_phoncode(mode,sin,msk)
 % Usage: (1) sout=w_phoncode('tU',"tcl ch ow kcl k");    % convert "choke" from TIMIT to Unicode
 %
+%        (2) [st,vt]=w_phoncode('t',1:67);                      % get all TIMIT strings
+%            u=w_phoncode('tU',1:67);                           % convert to Unicode
+%            fprintf(' N TIMIT Class Place Features  Uni\n');   % print list of TIMIT phones
+%            for i=1:67                                         % loop through all 67 phones
+%              fprintf('%2d%5s%5d%6d   %08x%5s\n',i,st(i),vt(1,i,3:5),u(i));
+%            end
+%
 %  Inputs: mode     Character array giving the following options:
 %                       't'     format is TIMIT: 65 phones + 2 stress marks
 %                       's'     format is SILIPA93: 255 phones
@@ -12,7 +19,7 @@ function [sout,vout]=w_phoncode(mode,sin,msk)
 %                                   phone-numbers  8,10,12,13,15,23,25,29,37,38,40,42,44,52-63,65 are unused
 %                       'j'     join sout phones into a single string with space delimiters
 %                       'J'     join sout phones into a single string without delimiters
-%          sin      Input phone sequence as string or character array (trailing blanks are removed)
+%          sin      Input phone sequence as string or character array (trailing blanks are removed) or as vector of phone numbers
 %          msk      Selects a subsets of Distinctive Features to be included in the vout(:,5) bit mask
 %
 % Outputs: sout     Output phone sequence as string or character array
