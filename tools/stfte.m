@@ -16,6 +16,7 @@ function [stft,meta,grpd,dgrpd]=stfte(s,metain,maxfft,par)
 %
 % Outputs: stft(nframe,maxfft)      complex STFT coefficients
 %          meta(nframe,8)           output metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay (samples), DC phase (rad), DC group delay (samples)]
+%                                   Note that if there are less than 3 output arguments, meta(:,7:8) will be set to zero.
 %          grpd(nframe,maxfft)      group delay in samples. This is calculated from the slope of a quadratic fitted to three consecutive points along the frequency axis.
 %          dgrpd(nframe,maxfft)     derivative of group delay in samples^2. This is calculated from a quadratic fitted to three consecutive points along the frequency axis.
 %
