@@ -1,4 +1,4 @@
-function [stft,meta,grpd,dgrpd]=stfte(s,metain,maxfft,par)
+function [stft,meta,gdsh,grpd,dgrpd]=stfte(s,metain,maxfft,par)
 % Epoch-based stft
 %
 %  Inputs: s(ns,1)                  real-valued signal
@@ -15,16 +15,17 @@ function [stft,meta,grpd,dgrpd]=stfte(s,metain,maxfft,par)
 %                                       par.fmbound     [0.3 0.5]   group delay bounds for par.groupdelay='fmnb'
 %
 % Outputs: stft(nframe,maxfft)      complex STFT coefficients
-%          meta(nframe,8)           output metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay (samples), DC phase (rad), DC group delay (samples)]
-%                                   Note that if there are less than 3 output arguments, meta(:,7:8) will be set to zero.
+%          meta(nframe,9)           output metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay (samples), EWGD (samples), EWPD (samples), DC phase (rad), DC group delay (samples)]
+%                                   Note that if there are less than 3 output arguments, meta(:,10) will be set to zero.
 %          grpd(nframe,maxfft)      group delay in samples. This is calculated from the slope of a quadratic fitted to three consecutive points along the frequency axis.
 %          dgrpd(nframe,maxfft)     derivative of group delay in samples^2. This is calculated from a quadratic fitted to three consecutive points along the frequency axis.
 %
 %
-% Note that the stft phase (modulo 2pi) for frame i can be recovered exactly from dgrpd(i,:) and meta(i,:) by:
+% Note that the stft phase (modulo 2pi) for frame i can be recovered exactly from meta(i,:) and either gsh(i,:) or dgrpd(i,:) as:
 %           nfft=meta(i,3);
-%           ddc=2*pi*(meta(i,6)-meta(i,8))/nfft;
-%           phase=cumsum(cumsum([ddc -(2*pi./nfft)^2*dgrpd(i,1:nfft-1)],2),2)-ddc+meta(i,7);
+%           ddc=-2*pi*meta(i,9)/nfft;
+%           phase1=cumsum([meta(i,8) gdsh(i,1:nfft-1)*-2*pi./nfft],2);
+%           phase2=cumsum(cumsum([ddc -(2*pi./nfft)^2*dgrpd(i,1:nfft-1)],2),2)-ddc+meta(i,8);
 %
 % Transformations are applied in the order window, offset, scale, pad, dft, groupdelay. If pad option is 'ends', the group delay can exceed the length of the unpadded frame.
 %
@@ -88,7 +89,7 @@ else
 end
 %
 nframe=size(metain,1);                  % number of frames
-meta=zeros(nframe,8);                   % space for metadata
+meta=zeros(nframe,10);                   % space for metadata
 meta(:,1:2)=metain(:,1:2);              % copy frame start and frame length information
 framelens=meta(:,2);                    % length of each frame in samples
 if nargin<3 || isempty(maxfft)
@@ -99,6 +100,7 @@ end
 sfr=zeros(nframe,maxfft);                                       % space for frames (one per row)
 stft=NaN(nframe,maxfft);                                        % space for stft; unused entries will be left as NaN
 grpd=NaN(nframe,maxfft);                                        % space for group delay; unused entries will be left as NaN
+gsh=NaN(nframe,maxfft);                                        % space for shifted group delay; unused entries will be left as NaN
 dgrpd=NaN(nframe,maxfft);                                       % space for derivative of group delay; unused entries will be left as NaN
 sfrix=repmat(0:maxfft-1,nframe,1)+repmat(meta(:,1),1,maxfft);   % index into s for frame samples
 sfrmk=repmat(1:maxfft,nframe,1)<=repmat(meta(:,2),1,maxfft);    % mask for valid values
@@ -144,7 +146,7 @@ if all(framelens==framelens(1))                             % all frames are the
         sfr(:,framelen+1:maxfft)=repmat(sfr(:,[1 framelen])*[0.5;0.5],1,maxfft-framelen);   % pad with average of endpoints
     end
     nfft=meta(1,3);                                         % DFT length of all frames
-    if strcmp(q.groupdelay,'dct');                          % do DCT rather than DFT
+    if strcmp(q.groupdelay,'dct')                          % do DCT rather than DFT
         stft(:,1:nfft)=v_rdct(sfr(:,1:nfft)')';             % Perform DCT on all frames of sfr (rows)
     else
         stft(:,1:nfft)=fft(sfr(:,1:nfft),nfft,2);           % Perform DFT on all frames of sfr (rows)
@@ -175,14 +177,17 @@ if all(framelens==framelens(1))                             % all frames are the
             end
             stft(:,1:nfft)=stft(:,1:nfft).*exp(2i*pi/nfft*meta(:,6)*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1]); % apply group delay (except to Nyquist frequency)
         end
+        meta(:,7)=v_modsym(sum(sfr(:,1:nfft).^2.*repmat(0:nfft-1,nframe,1),2)./sum(sfr(:,1:nfft).^2,2),nfft); % calculate energy-weighted group delay from time-domain signal
+          meta(:,8)=v_modsym(angle(sum(sfr(:,1:nfft).^2.*repmat(exp(2i*pi*(0:nfft-1)/nfft),nframe,1),2))*nfft/(2*pi),nfft); % calculate energy-weighted phase delay from time-domain signal
+        meta(:,9)=pi*(real(stft(:,1))<0); % phase at DC (always 0 or pi)
         if nargout>2                                            % need to calculate group delay also
             stfta=angle(stft(:,1:nfft));                        % calculate phases
             previx=[nfft 1:nfft-1];                             % index of previous element of frame
             difa=v_modsym(stfta-stfta(:,previx),2*pi);          % phase increment in range +-pi
+            gdsh(:,previx)=difa*(framelen/(-2*pi)); % group delay in samples at shifted frequencies
             grpd(:,previx)=(difa(:,previx)+difa)*(framelen/(-4*pi));    % add phase increment for adjacent frequency bins and convert into group delay of samples
-dgrpd(:,previx)=v_modsym(difa-difa(:,previx),2*pi)*((-0.25/pi^2)*framelen^2); % derivative of group delay
-meta(:,7)=stfta(:,1); % phase at DC (always 0 or pi)
-meta(:,8)=difa(:,1)*((-0.5/pi)*framelen);
+            dgrpd(:,previx)=v_modsym(difa-difa(:,previx),2*pi)*((-0.25/pi^2)*framelen^2); % derivative of group delay
+            meta(:,10)=difa(:,1)*((-0.5/pi)*framelen);
         end
     end
 else                                                        % we must process frames individually 'cos varying lengths
@@ -192,13 +197,13 @@ else                                                        % we must process fr
             sfr(i,framelen+1:maxfft)=repmat(sfr(i,[1 framelen])*[0.5;0.5],1,maxfft-framelen); % pad with average of endpoints
         end
         nfft=meta(i,3);                                     % DFT length
-        if strcmp(q.groupdelay,'dct');                          % do DCT rather than DFT
+        if strcmp(q.groupdelay,'dct')                          % do DCT rather than DFT
             stft(i,1:nfft)=v_rdct(sfr(i,1:nfft)')';             % Perform DCT on current frame of sfr (row)
         else
             stft(i,1:nfft)=fft(sfr(i,1:nfft));                  % Perform DFT
             if ~strcmp(q.groupdelay,'none')
                 switch q.groupdelay(1:4)
-				    case 'xcor'                                 % empty for now
+                    case 'xcor'                                 % empty for now
                         error('xcor group delay option not yet implemented for variable-length frames');
                     case 'ewgd'
                         meta(i,6)=sfr(i,1:nfft).^2*(0:nfft-1)'/sum(sfr(i,1:nfft).^2); % calculate EWGD for this frame
@@ -216,7 +221,7 @@ else                                                        % we must process fr
                         meta(i,6)= fminbnd(@(g) fftgdopterr(g,xx,yy,bb),q.fmbound(1)*(framelen-1),q.fmbound(2)*(framelen-1)); % find optimum
                     otherwise
                         error(sprintf('par.goupdelay equals unknown value: %s',q.groupdelay));
-                end
+                end                                             % if ~strcmp(q.groupdelay,'none') ... end
                 if length(q.groupdelay)>4
                     meta(i,6)=round(meta(i,6));                 % round group delay to an integer
                 end
@@ -225,13 +230,16 @@ else                                                        % we must process fr
             stfta=angle(stft(i,1:nfft));                        % calculate phases
             previx=[nfft 1:nfft-1];                             % index of previous element of frame
             difa=v_modsym(stfta-stfta(previx),2*pi);            % phase increment in range +-pi
+            gdsh(i,previx)=difa*(framelen/(-2*pi)); % group delay in samples at shifted frequencies
             grpd(i,previx)=(difa(previx)+difa)*(framelen/(-4*pi));      % add phase increment for adjacent frequency bins and convert into group delay of samples
             dgrpd(i,previx)=v_modsym(difa-difa(previx),2*pi)*((-0.25/pi^2)*framelen^2); % derivative of group delay
-            meta(i,7)=stfta(1); % phase at DC (always 0 or pi)
-meta(i,8)=difa(1)*((-0.5/pi)*framelen); % group delay at DC (might not equal grpd(i,1) if stfta(1)=+-pi)
-        end
-    end
-end
+            meta(i,7)=v_modsym(sum(sfr(i,1:nfft).^2.*(0:nfft-1),2)./sum(sfr(i,1:nfft).^2,2),nfft); % calculate energy-weighted group delay from time-domain signal
+            meta(i,8)=v_modsym(angle(sum(sfr(i,1:nfft).^2.*exp(2i*pi*(0:nfft-1)/nfft),2))*nfft/(2*pi),nfft); % calculate energy-weighted phase delay from time-domain signal
+            meta(i,9)=stfta(1);                                 % phase at DC (always 0 or pi)
+            meta(i,10)=difa(1)*((-0.5/pi)*framelen);             % group delay at DC (might not equal grpd(i,1) if stfta(1)=+-pi)
+        end                                                     % if strcmp(q.groupdelay,'dct')   ... else ... end
+    end                                                         % for i=1:nframe ... end
+end                                                             % if all(framelens==framelens(1))  ... else ... end
 if ~nargout
     rgb1=v_colormap('v_thermliny','k');                     % get colormap for magnitude
     rgb2=v_colormap('v_circrby','k');                       % get colormap for phase
