@@ -1,10 +1,10 @@
-function [stftg,metag]=stftegrid(stfte,meta,grid,par)
+function [stftg,metag]=stftegrid(stftv,meta,grid,par)
 % Interpolation of variable frame length STFT onto a regular grid
 %
-% Usage:    [stft,meta,grpd]=stfte(s,metain,[],par);                    % epoch-based STFT
-%           [stft,meta]=stftegrid(stft,meta,grid,par);                        % map onto a fixed grid unless par.interpstft='none'
+% Usage:    [stftv,metav]=stfte(s,metain,[],par);                   % epoch-based STFT
+%           [stft,meta]=stftegrid(stftv,metav,grid,par);            % map onto a fixed grid unless par.interpstft='none'
 %
-%  Inputs: stfte(nfin,maxbin)     complex STFT coefficients
+%  Inputs: stftv(nfin,maxbin)     complex STFT coefficients
 %          meta(nfin,nmeta)       metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay (samples)]
 %                                       although only columns 1,2,3 and 6 are currently used
 %          grid                     specifies the target grid in samples (starting @ 1): either [firstsamp(nfout) framelen(nfout) ndft(nfout)] for each frame or [firstsamp framelen ndft nhop] for a uniform grid
@@ -82,7 +82,7 @@ else
     q=v_paramsetch(q0,par);                                 % use the par input to update the parameters in q0
 end
 if strcmp(q.interpstft,'none')                              % no interpolation needed, so ...
-    stftg=stfte;                                            % ... copy across stft ...
+    stftg=stftv;                                            % ... copy across stft ...
     metag=meta;                                             % ... and metadata
 else                                                        % we need interpolation
     if size(meta,2)<6                                       % check if meta has all 6 columns
@@ -93,7 +93,7 @@ else                                                        % we need interpolat
             meta(1,6)=0;                                    % enlarge meta to 6 columns
         end
     end
-    [nfin,maxbin]=size(stfte);                              % number of input frames and maximum fft size over all frames
+    [nfin,maxbin]=size(stftv);                              % number of input frames and maximum fft size over all frames
     finfix=all(meta(:,3)==meta(1,3));                       % true if input DFT length is fixed
     foutfix=all(grid(:,2)==grid(1,2));                      % true if output DFT length is fixed
     % sort out output grid
@@ -125,12 +125,12 @@ else                                                        % we need interpolat
             nfout=length(taxout);                           % revised number of output frames
         end
         if nfout>0                                          % check again if there are any frames to output 
-            % stfte=stfte.*exp(-2i*pi*repmat(0:maxbin-1,nfin,1).*repmat((meta(:,1)+meta(:,6))./meta(:,3),1,maxbin)).*repmat(meta(:,5),1,maxbin); % shift origin to sample 0 and undo scaling & group delay
-            % stfte(:,1)=stfte(:,1)+meta(:,4).*meta(:,3);   % add offset*DFT_length
+            % stftv=stftv.*exp(-2i*pi*repmat(0:maxbin-1,nfin,1).*repmat((meta(:,1)+meta(:,6))./meta(:,3),1,maxbin)).*repmat(meta(:,5),1,maxbin); % shift origin to sample 0 and undo scaling & group delay
+            % stftv(:,1)=stftv(:,1)+meta(:,4).*meta(:,3);   % add offset*DFT_length
             for i=1:nfin % for now undo the group delay frame by frame
                     nfft=meta(i,3);                     % DFT length of this frame
-                     stfte(i,1:nfft)=stfte(i,1:nfft).*exp(-2i*pi/nfft*(meta(i,1)+meta(i,6))*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1])*meta(i,5); % apply non-integer group delay (except to Nyquist frequency)
-                     stfte(i,1)=stfte(i,1)+meta(i,4)*meta(i,3);   % add offset*DFT_length
+                     stftv(i,1:nfft)=stftv(i,1:nfft).*exp(-2i*pi/nfft*(meta(i,1)+meta(i,6))*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1])*meta(i,5); % apply non-integer group delay (except to Nyquist frequency)
+                     stftv(i,1)=stftv(i,1)+meta(i,4)*meta(i,3);   % add offset*DFT_length
             end
             stftg=NaN(nfout,maxbinout);                     % space for output STFT
             if interpindep                 % if independent interpolation in time and frequency ...
@@ -144,9 +144,9 @@ else                                                        % we need interpolat
                 % convert input stft to the intepolation domain
                 switch q.interpdom
                     case 'magcph'                               % interpolate magnitude and complex phase
-                        stfty=abs(stfte);
+                        stfty=abs(stftv);
                     case 'crmcph'                               % interpolate cube-root power and complex phase (as in Hermansky1990)
-                        stfty=abs(stfte).^(2/3);
+                        stfty=abs(stftv).^(2/3);
                     otherwise
                         stfty=[];
                 end
@@ -162,7 +162,7 @@ else                                                        % we need interpolat
                         nbinx=min(meta(1,3),grid(1,2));         % input and output frame sizes both fixed; use input or output resolution, whichever is smaller
                 end
                 if finfix && nbinx==meta(1,3)                   % input frequency resolution is unchanged
-                    stftx=stfte(:,1:nbinx);                     % copy existing complex stft
+                    stftx=stftv(:,1:nbinx);                     % copy existing complex stft
                     if ~isempty(stfty)
                         stfty=stfty(:,1:nbinx);                 % and magnitude-domain version if it exists
                     end
@@ -171,7 +171,7 @@ else                                                        % we need interpolat
                     kklo=floor(kkf);
                     kkf=kkf-kklo;
                     kkhi=mod(kklo+1,meta(:,3)); % make references to fs wrap around to 0
-                    stftx=stfte(repmat((1:nfin)',1,nbinx)+nfin*kklo).*(1-kkf)+stfte(repmat((1:nfin)',1,nbinx)+nfin*kkhi).*kkf; % interpolate in frequency direction
+                    stftx=stftv(repmat((1:nfin)',1,nbinx)+nfin*kklo).*(1-kkf)+stftv(repmat((1:nfin)',1,nbinx)+nfin*kkhi).*kkf; % interpolate in frequency direction
                     if ~isempty(stfty)
                         stfty=stfty(repmat((1:nfin)',1,nbinx)+nfin*kklo).*(1-kkf)+stfty(repmat((1:nfin)',1,nbinx)+nfin*kkhi).*kkf; % interpolate in frequency direction
                     end
@@ -249,18 +249,18 @@ else                                                        % we need interpolat
                     taxin=[2*taxin(1)-taxin(ninpre+1:-1:2); taxin; 2*taxin(end)-taxin(end-1:-1:end-ninpost)]; % add tops and tails to frame times
                     switch par.interpext
                         case 'zero'     %         Assume preceding/following input frames are zero
-                            stfte=[zeros(ninpre,maxbin); stfte; zeros(ninpost,maxbin)];
+                            stftv=[zeros(ninpre,maxbin); stftv; zeros(ninpost,maxbin)];
                             meta=[repmat(meta(1,:),ninpre,1); meta; repmat(meta(end,:),ninpost,1)];
                         case 'rep'     %          Assume preceding/following input frames replicate existing end frames
-                            stfte=[repmat(stfte(1,:),ninpre,1); stfte; repmat(stfte(end,:),ninpost,1)];
+                            stftv=[repmat(stftv(1,:),ninpre,1); stftv; repmat(stftv(end,:),ninpost,1)];
                             meta=[repmat(meta(1,:),ninpre,1); meta; repmat(meta(end,:),ninpost,1)];
                         case 'refl'     %    Reflect the preceding/following input frames
-                            stfte=[stfte(ninpre+1:-1:2,:); stfte; stfte(end-1:-1:end-ninpost,:)];
+                            stftv=[stftv(ninpre+1:-1:2,:); stftv; stftv(end-1:-1:end-ninpost,:)];
                             meta=[meta(ninpre+1:-1:2,:); meta; meta(end-1:-1:end-ninpost,:)];
                     end
-                    nfin=size(stfte,1); % update number of input frames
+                    nfin=size(stftv,1); % update number of input frames
                 end
-                stftvv=stfte(:);                                    % make into a column vector
+                stftvv=stftv(:);                                    % make into a column vector
                 taxv=repmat(taxin,maxbin,1);                        % input centre-of-frame times in samples (start @ 1)
                 %%%% the next few lines don't work well for frames less than 7 samples long (luckily these are probably rare) but means we don't have to add frequency samples
                 % better would be to calculate how many wrap-around samples we need at each end to ensure that the vertices needed for interpolation are present
