@@ -143,7 +143,7 @@ for icfg=1:nconfig                                          % loop through param
     end
     framelim=[[1 frameend(1:end-par.ovfact)+1];frameend(par.ovfact:end)];   % start and end of each frame (sample indices)
     metain=[framelim(1,:);1+[-1 1]*framelim]';                  % one row per frame: [start-sample frame-length]
-    [stft,meta,grpd]=stfte(s,metain,[],par);                    % epoch-based STFT
+    [stft,meta]=stfte(s,metain,[],par);                    % epoch-based STFT
     % [stft,meta]=stftgrid(stft,meta,par);                      % OLD: optionally map onto a fixed grid and update stft and meta
     grid=[meta(1,1) round(par.interpflen*fs) round(par.interpflen*fs) round(par.interpflen*fs/par.interpov)];      % [firstsamp framelen ndft nhop] for uniform grid
     [stft,meta]=stftegrid(stft,meta,grid,par);                  % optionally map onto a fixed grid
