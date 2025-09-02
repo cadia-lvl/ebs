@@ -14,7 +14,7 @@ function [stftg,metag]=stftegrid(stftv,meta,grid,par)
 %                                       par.interpstft  'none'      interpolation method in griddata: {'none','indep','nearest','linear','natural','cubic','v4'}
 %                                       par.interpfsps  1e-5        fs^-2 multiplied by the distance in Hz that is equivalent to a distance of one second (fs per sample)
 %                                       par.interpdom   'cplx'      Interpolation domain: {'cplx','magcph','crmcph'}
-%                                       par.interpext   'rep'      Handling of extrapolated frames: {'omit','zero','rep','refl'}
+%                                       par.interpext   'rep'       Handling of extrapolated frames: {'omit','zero','rep','refl'}
 %
 % Outputs: stftg(nfout,nbin)       complex STFT coefficients
 %          metag(nfout,nmeta)      output metadata with same column count as the input meta. metag(*,:)=[first-sample, frame-length=nbin, dft-length=nbin, 0, 1, 0]
@@ -95,7 +95,6 @@ else                                                        % we need interpolat
     end
     [nfin,maxbin]=size(stftv);                              % number of input frames and maximum fft size over all frames
     finfix=all(meta(:,3)==meta(1,3));                       % true if input DFT length is fixed
-    foutfix=all(grid(:,2)==grid(1,2));                      % true if output DFT length is fixed
     % sort out output grid
     [nfout,grcol]=size(grid);                                 % number of output frames
     grcol3=grcol==3; % flag for 3 columns
@@ -112,6 +111,7 @@ else                                                        % we need interpolat
         metag=[grid(:,[1 2 2+grcol3]) repmat([0 1 0],nfout,1)];    % initialize output metadata
         maxbinout=max(grid(:,2));
     end
+    foutfix=all(metag(:,3)==metag(1,3));                      % true if output DFT length is fixed
     stftg=NaN(0,maxbinout);                                 % zero-frame output STFT in case nfout is or becomes zero
     if nfout>0                                              % if there are any frames to output ...
         maxbinout=size(stftg,2);                            %   max number of DFT bins in output
@@ -157,9 +157,9 @@ else                                                        % we need interpolat
                     case 1
                         nbinx=meta(1,3);                        % fixed input frame size;  output frame sizes variable
                     case 2
-                        nbinx=grid(1,2);                        % variable input frame size;  fixed output frame size
+                        nbinx=metag(1,3);                        % variable input frame size;  fixed output frame size
                     case 3
-                        nbinx=min(meta(1,3),grid(1,2));         % input and output frame sizes both fixed; use input or output resolution, whichever is smaller
+                        nbinx=min(meta(1,3),metag(1,3));         % input and output frame sizes both fixed; use input or output resolution, whichever is smaller
                 end
                 if finfix && nbinx==meta(1,3)                   % input frequency resolution is unchanged
                     stftx=stftv(:,1:nbinx);                     % copy existing complex stft
