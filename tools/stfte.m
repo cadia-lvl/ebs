@@ -21,11 +21,11 @@ function [stft,meta,gdsh,grpd,dgrpd]=stfte(s,metain,maxfft,par)
 %          dgrpd(nframe,maxfft)     derivative of group delay in samples^2. This is calculated from a quadratic fitted to three consecutive points along the frequency axis.
 %
 %
-% Note that the stft phase (modulo 2pi) for frame i can be recovered exactly from meta(i,:) and either gsh(i,:) or dgrpd(i,:) as:
+% Note that the stft phase (modulo 2pi) for frame i can be recovered exactly from meta(i,:) and either gdsh(i,:) or dgrpd(i,:) as:
 %           nfft=meta(i,3);
-%           ddc=-2*pi*meta(i,9)/nfft;
-%           phase1=cumsum([meta(i,8) gdsh(i,1:nfft-1)*-2*pi./nfft],2);
-%           phase2=cumsum(cumsum([ddc -(2*pi./nfft)^2*dgrpd(i,1:nfft-1)],2),2)-ddc+meta(i,8);
+%           ddc=-2*pi*meta(i,10)/nfft;
+%           phase1=cumsum([meta(i,9) gdsh(i,1:nfft-1)*-2*pi./nfft],2);
+%           phase2=cumsum(cumsum([ddc -(2*pi./nfft)^2*dgrpd(i,1:nfft-1)],2),2)-ddc+meta(i,9);
 %
 % Transformations are applied in the order window, offset, scale, pad, dft, groupdelay. If pad option is 'ends', the group delay can exceed the length of the unpadded frame.
 %
@@ -178,7 +178,7 @@ if all(framelens==framelens(1))                             % all frames are the
             stft(:,1:nfft)=stft(:,1:nfft).*exp(2i*pi/nfft*meta(:,6)*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1]); % apply group delay (except to Nyquist frequency)
         end
         meta(:,7)=v_modsym(sum(sfr(:,1:nfft).^2.*repmat(0:nfft-1,nframe,1),2)./sum(sfr(:,1:nfft).^2,2),nfft); % calculate energy-weighted group delay from time-domain signal
-          meta(:,8)=v_modsym(angle(sum(sfr(:,1:nfft).^2.*repmat(exp(2i*pi*(0:nfft-1)/nfft),nframe,1),2))*nfft/(2*pi),nfft); % calculate energy-weighted phase delay from time-domain signal
+        meta(:,8)=v_modsym(angle(sum(sfr(:,1:nfft).^2.*repmat(exp(2i*pi*(0:nfft-1)/nfft),nframe,1),2))*nfft/(2*pi),nfft); % calculate energy-weighted phase delay from time-domain signal
         meta(:,9)=pi*(real(stft(:,1))<0); % phase at DC (always 0 or pi)
         if nargout>2                                            % need to calculate group delay also
             stfta=angle(stft(:,1:nfft));                        % calculate phases
