@@ -109,7 +109,7 @@ else                                                        % we need interpolat
     else                                                    % grid = [firstsamp(nfout) framelen(nfout) ndft(nfout)] or, legacy only, [firstsamp(nfout) ndft(nfout)]
         nfout=size(grid,1);                                 % number of output frames
         metag=[grid(:,[1 2 2+grcol3]) repmat([0 1 0],nfout,1)];    % initialize output metadata
-        maxbinout=max(grid(:,2));
+        maxbinout=max(grid(:,3));
     end
     foutfix=all(metag(:,3)==metag(1,3));                      % true if output DFT length is fixed
     stftg=NaN(0,maxbinout);                                 % zero-frame output STFT in case nfout is or becomes zero
