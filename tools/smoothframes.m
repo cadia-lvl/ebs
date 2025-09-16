@@ -41,37 +41,37 @@ if ~strcmp(q.smoothalg,'none')   % if smoothing required
     end
     %%%%%%%%%%% Select valid frames %%%%%%%%%%%%%
     % for now we just use the adjacent-frame cross-correlation but we could also use frame length ratio or require multiple consecutive valid frames
-    lrat=flin(2:end)./flin(1:end-1); % length rati of adjacent frames
+    lrat=flin(2:end)./flin(1:end-1); % length ratio of adjacent frames
     xcrv=(xcrin>=q.voithresh) & (lrat<=q.voilenrat) & (lrat>=1/q.voilenrat); % find frames with good x-correlation an a good length ratio
     frameok=[xcrv true] & [true xcrv]; % mask for valid frames
     segstart=find(~frameok & [true frameok(1:end-1)]); % first of string of bad frames
     segend=find(~frameok & [frameok(2:end) true]); % last of string of bad frames
     if ~isempty(segstart) && (segstart(1)>1 || segend(1)<nfin) % check if anything to do
-        feout=[]; % initialize feout
-        jb=1; % dummy last frame of previous bad string
-        for i=1:length(segstart) % loop for each string of consecutive bad frames
-            ja=segstart(i); % first frame in string
-            feout=[feout fein(jb:ja-1)]; % copy previous string of good frame boundaries to the output
-            jb=segend(i); % last frame in string
-            ta=fsin(ja)-1; % end of previous good frame
-            tgap=fein(jb)-ta; % length of gap (samples)
-            if ja==1 % if string starts with first frame
-                fa=tgap/flin(jb+1); % assume pitch of previous good frame equals that of next good frame
+        feout=[];                           % initialize feout
+        jb=1;                               % dummy last frame of previous bad string
+        for i=1:length(segstart)            % loop for each string of consecutive bad frames
+            ja=segstart(i);                 % first frame in string
+            feout=[feout fein(jb:ja-1)];    % copy previous string of good frame boundaries to the output
+            jb=segend(i);                   % last frame in string
+            ta=fsin(ja)-1;                  % end of previous good frame
+            tgap=fein(jb)-ta;               % length of gap (samples)
+            if ja==1                        % if string starts with first frame
+                fa=tgap/flin(jb+1);         % assume pitch of previous good frame equals that of next good frame
             else
-                fa=tgap/flin(ja-1); % scaled pitch of previous good frame
+                fa=tgap/flin(ja-1);         % scaled pitch of previous good frame (in cycles/gap)
             end
-            if jb==nfin % if string ends with final frame
-                fb=fa; % assume pitch of next good frame equals that of previous good frame
+            if jb==nfin                     % if string ends with final frame
+                fb=fa;                      % assume pitch of next good frame equals that of previous good frame
             else
-                fb=tgap/flin(jb+1); % scaled pitch of next good frame
+                fb=tgap/flin(jb+1);         % scaled pitch of next good frame (in cycles/gap)
             end
-            k=round(0.5*(fa+fb)); % number of periods in gap is k ( possibly <1 )
-            if k>1 % we need to insert some extra frame boundaries
+            k=round(0.5*(fa+fb));           % number of periods in gap is k ( possibly <1 )
+            if k>1                          % we need to insert some extra frame boundaries
                 switch q.smoothalg
                     case 'lin'                              %%%%% 'lin': insert equal length frames %%%%%%
                         tadd=ta+round((1:k-1)*tgap/k);      % equally spaced pseudo-epochs
-                    case 'quadlin'                          %%%%% 'quadlin': pitch increases linearly with equal pitch error at each end %%%%
-                        p=tqlin*[0 k fa fb]';               % frame-phase = p(1)*t^2+p(2)*t+p(3)
+                    case 'quadlin'                          %%%%% 'quadlin': pitch increases linearly with equal pitch error, p(4), at each end %%%%
+                        p=tqlin*[0 k fa fb]';               % frame-phase, q, = p(1)*t^2+p(2)*t+p(3) for 0<t<1, so instantaneous pitch = dq/dt=2*p(1)*t+p(2)
                         kk=1:k-1;
                         tadd=ta+round(tgap*2*(p(3)-kk)./(-sqrt(p(2)^2-4*p(1)*(p(3)-kk))-p(2)));        % solve for frame-phase = integers kk
                     case 'quadlog'                          %%%%% 'quadlin': pitch increases linearly with equal log-pitch error at each end %%%%
