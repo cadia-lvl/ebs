@@ -10,14 +10,13 @@ close all;
 timit=gettimitpath;                         % get path to timit subfolder of timit database
 %
 parvar={'cfname' 'epoch' 'nmix'};                                                              % cell array row listing the parameters to change during trials
-configpars={
-    {'30ms-g1' 0 1};   % one row per trial giving the parameter values
+configpars={  % one row per trial giving the parameter values: the parameters listed in parvar come first followed by parameter-value pairs
+    {'30ms-g1' 0 1}; 
     % {'30ms-m4' 0 4};
     {'ep-g1' 1 1};
-    {'ep-g1' 1 1};
-    {'epq-natm-g1' 1 1 'smoothalg' 'quadlog' 'interpstft' 'natural' 'interpdom' 'magcph'};
+    % {'epq-natm-g1' 1 1 'smoothalg' 'quadlog' 'interpstft' 'natural' 'interpdom' 'magcph'};
     % {'ep-g4' 1 4};
-    {'ep-g1-lda15' 1 1 'ldatype' 'lda'};
+    % {'ep-g1-lda15' 1 1 'ldatype' 'lda'};
     % {'e-g4-lda15'  1 4 'ldatype' 'lda'};
     };
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
