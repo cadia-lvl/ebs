@@ -157,9 +157,9 @@ else                                                        % we need interpolat
                     case 1
                         nbinx=meta(1,3);                        % fixed input frame size;  output frame sizes variable
                     case 2
-                        nbinx=metag(1,3);                        % variable input frame size;  fixed output frame size
+                        nbinx=metag(1,3);                       % variable input frame size;  fixed output frame size
                     case 3
-                        nbinx=min(meta(1,3),metag(1,3));         % input and output frame sizes both fixed; use input or output resolution, whichever is smaller
+                        nbinx=min(meta(1,3),metag(1,3));        % input and output frame sizes both fixed; use input or output resolution, whichever is smaller
                 end
                 if finfix && nbinx==meta(1,3)                   % input frequency resolution is unchanged
                     stftx=stftv(:,1:nbinx);                     % copy existing complex stft
@@ -170,17 +170,17 @@ else                                                        % we need interpolat
                     kkf=repmat((0:nbinx-1)/nbinx,nfin,1).*repmat(meta(:,3),1,nbinx); % fractional index into input frequency bins
                     kklo=floor(kkf);
                     kkf=kkf-kklo;
-                    kkhi=mod(kklo+1,meta(:,3)); % make references to fs wrap around to 0
+                    kkhi=mod(kklo+1,meta(:,3));                 % make references to fs wrap around to 0
                     stftx=stftv(repmat((1:nfin)',1,nbinx)+nfin*kklo).*(1-kkf)+stftv(repmat((1:nfin)',1,nbinx)+nfin*kkhi).*kkf; % interpolate in frequency direction
                     if ~isempty(stfty)
                         stfty=stfty(repmat((1:nfin)',1,nbinx)+nfin*kklo).*(1-kkf)+stfty(repmat((1:nfin)',1,nbinx)+nfin*kkhi).*kkf; % interpolate in frequency direction
                     end
                 end
                 % Stage (2): interpolate in time onto target time grid (taxout)
-                if taxout(1)<taxin(1) || taxout(end)>taxin(end)                 % we need to cope with extrapolation
-                    ninpre=sum(2*taxin(1)-taxout(1)>taxin); % number of reflected inputs we need to pre-append
-                    ninpost=sum(2*taxin(end)-taxout(end)<taxin); % number of reflected inputs we need to append
-                    if ninpre==nfin || ninpost==nfin % we could extrapolate further
+                if taxout(1)<taxin(1) || taxout(end)>taxin(end)     % we need to cope with extrapolation
+                    ninpre=sum(2*taxin(1)-taxout(1)>taxin);         % number of reflected inputs we need to pre-append
+                    ninpost=sum(2*taxin(end)-taxout(end)<taxin);    % number of reflected inputs we need to append
+                    if ninpre==nfin || ninpost==nfin                % we could extrapolate further
                         error('The number of extrapolated output frames cannot exceed the number of input frames');
                     end
                     taxin=[2*taxin(1)-taxin(ninpre+1:-1:2); taxin; 2*taxin(end)-taxin(end-1:-1:end-ninpost)]; % add tops and tails
@@ -209,7 +209,7 @@ else                                                        % we need interpolat
                 end
                 stftx=stftx(tti,:).*repmat(ttg,1,nbinx)+stftx(ttj,:).*repmat(ttf,1,nbinx); % perform complex-valued linear interpolation
                 if ~isempty(stfty)
-                    stfty=stfty(tti,:).*repmat(ttg,1,nbinx)+stfty(ttj,:).*repmat(ttf,1,nbinx); % perform complex-valued linear interpolation
+                    stfty=stfty(tti,:).*repmat(ttg,1,nbinx)+stfty(ttj,:).*repmat(ttf,1,nbinx); % perform linear interpolation in chosen magnitude domain
                 end
 
                 % Stage (3): interpolate in frequency onto target frequency grid (possibly different for each frame)
@@ -217,28 +217,31 @@ else                                                        % we need interpolat
                 kklo=floor(kkf);                                                            % note this might exceed nbinx-1 for some frames
                 kkf=kkf-kklo;                                                               % fractional part
                 kkhi=mod(kklo+1,nbinx);                                                % make references to fs wrap around to 0
-                stftx=stftx(repmat((1:nfout)',1,maxbinout)+nfout*mod(kklo,nbinx)).*(1-kkf)+stftx(repmat((1:nfout)',1,maxbinout)+nfout*kkhi).*kkf; % interpolate in frequency direction
+                stftx=stftx(repmat((1:nfout)',1,maxbinout)+nfout*mod(kklo,nbinx)).*(1-kkf)+stftx(repmat((1:nfout)',1,maxbinout)+nfout*kkhi).*kkf; % interpolate complex stft in frequency direction
                 if ~isempty(stfty)
-                    stftg=stfty(repmat((1:nfout)',1,maxbinout)+nfout*mod(kklo,nbinx)).*(1-kkf)+stfty(repmat((1:nfout)',1,maxbinout)+nfout*kkhi).*kkf; % interpolate in frequency direction
+                    stftg=stfty(repmat((1:nfout)',1,maxbinout)+nfout*mod(kklo,nbinx)).*(1-kkf)+stfty(repmat((1:nfout)',1,maxbinout)+nfout*kkhi).*kkf; % interpolate magnitude in frequency direction
                 end
                 switch q.interpdom
-                    case 'cplx'                                     % interpolate complex values (i.e. real and imaginary separately)
-                        stftg=stftx; % perform complex-valued linear interpolation
-                    case 'magcph'                                   % interpolate magnitude and complex phase
+                    case 'cplx'                                         % interpolate complex values (i.e. real and imaginary separately)
+                        stftg=stftx;                                    % perform complex-valued linear interpolation
+                    case 'magcph'                                       % interpolate magnitude and complex phase
                         stfta=abs(stftx);                               % magnitude of complex interpolation
-                        msk=stfta~=0;                                 % complex phase irrelevant if vqa==0
-                        stftg(msk)=stftg(msk)./stfta(msk).*stftx(msk);        % magnitude from vq and phase from vqc unless vqc==0
-                    case 'crmcph'                                   % interpolate cube-root power and complex phase (as in Hermansky1990)
-                        stftg=stftg.^(3/2);                               % undo cube-root-power compression
-                        stfta=abs(stftx);                                % magnitude of complex interpolation
-                        msk=stfta~=0;                                 % complex phase irrelevant if vqa==0
-                        stftg(msk)=stftg(msk)./stfta(msk).*stftx(msk);        % magnitude from vq and phase from vqc unless vqc==0
+                        msk=stfta~=0;                                   % complex phase irrelevant if vqa==0
+                        stftg(msk)=stftg(msk)./stfta(msk).*stftx(msk);  % magnitude from vq and phase from vqc unless vqc==0
+                    case 'crmcph'                                       % interpolate cube-root power and complex phase (as in Hermansky1990)
+                        stftg=stftg.^(3/2);                             % undo cube-root-power compression
+                        stfta=abs(stftx);                               % magnitude of complex interpolation
+                        msk=stfta~=0;                                   % complex phase irrelevant if vqa==0
+                        stftg(msk)=stftg(msk)./stfta(msk).*stftx(msk);  % magnitude from vq and phase from vqc unless vqc==0
                 end
                 stftg(repmat(1:maxbinout,nfout,1)>repmat(metag(:,3),1,maxbinout))=NaN;      % set invalid entries to NaN
-            else                                                    % perform 2D interpolation
-                %%%%%%%%%%%%%%%%%%%%%%%%%
-                %   2-D Interpolation   %
-                %%%%%%%%%%%%%%%%%%%%%%%%%
+            else                                                        % perform 2D interpolation
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                %   2-D Interpolation                                                                        %
+                %                                                                                            %
+                %  Note that we only interpolate the first half of the spectrum (i.e. +ve frequencies) and   %
+                %  assume conjugate symmetry to calculate the remainder                                      %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % sort out input data coordinates
                 ninpre=sum(2*taxin(1)-taxout(1)>=taxin); % number of reflected inputs we need to pre-append
                 ninpost=sum(2*taxin(end)-taxout(end)<=taxin); % number of reflected inputs we need to append
@@ -273,7 +276,7 @@ else                                                        % we need interpolat
                 % sort out output data coordinates
                 taxfv=repmat(taxout,maxbinout,1);                   % output frame times
                 faxfv=reshape(repmat(0:maxbinout-1,nfout,1)./repmat(metag(:,3),1,maxbinout),[],1);                      % bins in fractions of fs (may exceed 1 for some frames)
-                mskp=repmat(0:maxbinout-1,nfout,1)<=repmat(0.5*metag(:,3),1,maxbinout);                                 % mask for positive frequencies
+                mskp=repmat(0:maxbinout-1,nfout,1)<=repmat(0.5*metag(:,3),1,maxbinout);                                 % mask to restrict output to positive frequencies only
                 taxfv=taxfv(mskp);
                 faxfv=faxfv(mskp);
                 taxfact=q.interpfsps;                                                                                   % relative weighting of time-frequency errors in fs/sample
