@@ -11,10 +11,13 @@ function [stftg,metag]=stftegrid(stftv,meta,grid,par)
 %                                   NOTE: for backward compatibility [firstsamp(nfout) ndft(nfout)] for each frame or [firstsamp ndft nhop] for a uniform grid is also accepted
 %          par                      parameter structure containing optional parameters
 %                                       =Parameter=     =Default=   =Description=
-%                                       par.interpstft  'none'      interpolation method in griddata: {'none','indep','nearest','linear','natural','cubic','v4'}
-%                                       par.interpfsps  1e-5        fs^-2 multiplied by the distance in Hz that is equivalent to a distance of one second (fs per sample)
-%                                       par.interpdom   'cplx'      Interpolation domain: {'cplx','magcph','crmcph'}
-%                                       par.interpext   'rep'       Handling of extrapolated frames: {'omit','zero','rep','refl'}
+%                                       par.interpdom=   'magcph';       % Interpolatione domain: {'cplx','magcph','crmcph'}
+%                                       par.interpext=   'rep';          % Handling of extrapolated frames: {'omit','zero','rep','refl'}
+%                                       par.interpstft=  'natural';      % Interpolation method for call to griddata: {'none','indep','nearest','linear','natural','cubic','v4'}
+%                                       par.interpfsps=  1e-5;           % Dimensionless interpolation scale factor: fs^-2 multiplied by the distance in Hz that is equivalent to a distance of one second
+%                                       par.interpgd=    'none';         % Interpolation of frame group delay: {'none','lin','linrep'}
+%                                       par.interpof=    'none';         % Interpolation of frame offset: {'none','lin'}
+%                                       par.interpsc=    'none';         % Interpolation of frame scale factor: {'none','lin','log'}
 %
 % Outputs: stftg(nfout,nbin)       complex STFT coefficients
 %          metag(nfout,nmeta)      output metadata with same column count as the input meta. metag(*,:)=[first-sample, frame-length=nbin, dft-length=nbin, 0, 1, 0]
