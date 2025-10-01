@@ -27,6 +27,8 @@ function [stft,meta,gdsh,grpd,dgrpd]=stfte(s,metain,maxfft,par)
 %           ddc=-2*pi*meta(i,10)/nfft;
 %           phase1=cumsum([meta(i,9) gdsh(i,1:nfft-1)*-2*pi./nfft],2);
 %           phase2=cumsum(cumsum([ddc -(2*pi./nfft)^2*dgrpd(i,1:nfft-1)],2),2)-ddc+meta(i,9);
+% The normalized shifted group delay obtained by subtracting EWPD is (largely?) independent of circular delays and is given by 
+%           gdshew=v_modsym(gdsh-repmat(metax(:,8),1,size(gdsh,2)),metax(:,3));
 %
 % Transformations are applied in the order window, offset, scale, pad, dft, groupdelay. If pad option is 'ends', the group delay can exceed the length of the unpadded frame.
 %
