@@ -11,11 +11,14 @@ function [stftg,metag]=stftegrid(stftv,meta,grid,par,lsym)
 %                                   NOTE: for backward compatibility [firstsamp(nfout) ndft(nfout)] for each frame or [firstsamp ndft nhop] for a uniform grid is also accepted
 %          par                      parameter structure containing optional parameters
 %                                       =Parameter=     =Default=   =Description=
-%                                       par.interpstft  'none'      interpolation method in griddata: {'none','indep','nearest','linear','natural','cubic','v4'}
-%                                       par.interpfsps  1e-5        fs^-2 multiplied by the distance in Hz that is equivalent to a distance of one second (fs per sample)
-%                                       par.interpdom   'cplx'      Interpolation domain: {'cplx','magcph','crmcph'}
-%                                       par.interpext   'rep'       Handling of extrapolated frames: {'omit','zero','rep','refl'}
-%          lsym(nlay)               Symmetry of layers: -1 for STFT or {0,1}={aligned,shifted} frequencies plus {0,2,4}= {Complex Hermitian, Real Symmetric, Real antisymmetric} [default: [-1; zeros(nlay-1,1)]]
+%                                       par.interpdom=   'magcph';       % Interpolatione domain: {'cplx','magcph','crmcph'}
+%                                       par.interpext=   'rep';          % Handling of extrapolated frames: {'omit','zero','rep','refl'}
+%                                       par.interpstft=  'natural';      % Interpolation method for call to griddata: {'none','indep','nearest','linear','natural','cubic','v4'}
+%                                       par.interpfsps=  1e-5;           % Dimensionless interpolation scale factor: fs^-2 multiplied by the distance in Hz that is equivalent to a distance of one second
+%                                       par.interpgd=    'none';         % Interpolation of frame group delay: {'none','lin','linrep'}
+%                                       par.interpof=    'none';         % Interpolation of frame offset: {'none','lin'}
+%                                       par.interpsc=    'none';         % Interpolation of frame scale factor: {'none','lin','log'}
+%          lsym(nlay)               Symmetry of layers: -2 for STFT or {0,1}={aligned,shifted} frequencies plus {0,2,4}= {Complex Hermitian, Real Symmetric, Real antisymmetric} [default: [-1; zeros(nlay-1,1)]]
 %
 %
 % Outputs: stftg(nfout,nbin,nlay)  STFT coefficient array
@@ -63,6 +66,7 @@ function [stftg,metag]=stftegrid(stftv,meta,grid,par,lsym)
 % (9) should perhaps force conjugate symmetry explicitly in 1-D case (e.g. in case DC and Nyquist are not exactly real)
 % (10) when adding extra frame at start and end (see ninpre/ninpost) we need to check that the metadata is corectly calculated
 % (11) would it be more efficient to do 1D interpolation only for positive frequencies and then impose conjugate symmetry at the end (as for 2D)
+% (12) Group delay compensation in line 144 is not right for Nyquist frequency if delay is an odd number of samples (not obvious what the solution is) 
 persistent q0
 %
 % define default parameters
@@ -135,7 +139,7 @@ else                                                        % we need interpolat
                 for ilay=1:nlay
                     stftvl=zeros(nfin,maxbin); % space for this layer
                     if lsym(ilay)<0 % complex STFT so adjust group delay using metadata
-                        for i=1:nfin % for now undo the group delay frame by frame
+                        for i=1:nfin % for now undo the group delay frame by frame compensating for start-sample, scale, and group-delay: meta(:,[1 5 6]).
                             nfft=meta(i,3);                     % DFT length of this frame
                             stftvl(i,1:nfft)=stftv(i,1:nfft,ilay).*exp(-2i*pi/nfft*(meta(i,1)+meta(i,6))*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1])*meta(i,5); % apply non-integer group delay (except to Nyquist frequency)
                             stftvl(i,1)=stftvl(i,1)+meta(i,4)*meta(i,3);   % add offset*DFT_length
@@ -176,11 +180,11 @@ else                                                        % we need interpolat
                             if ~isempty(stfty)
                                 stfty=stfty(:,1:nbinx);                 % and magnitude-domain version if it exists
                             end
-                        else % need to change the frequency resolution to nbinx bins
-                            if mod(lsym(ilay),2)                                                                                    % frequencies of this layer are shifted by 0.5 * frequency increment
-                                kkf=repmat((0.5:nbinx-0.5)/nbinx,nfin,1).*repmat(meta(:,3),1,nbinx)-0.5; % non-integer index into input frequency bins size=(nfin,nbinx) [base=0]
-                            else  % frequencies of this layer are aligned with DFT
-                                kkf=repmat((0:nbinx-1)/nbinx,nfin,1).*repmat(meta(:,3),1,nbinx); % non-integer index into input frequency bins size=(nfin,nbinx) [base=0]
+                        else                                                                                % need to change the frequency resolution to nbinx bins
+                            if mod(lsym(ilay),2)                                                            % frequencies of this layer are shifted by 0.5 * frequency increment
+                                kkf=repmat((0.5:nbinx-0.5)/nbinx,nfin,1).*repmat(meta(:,3),1,nbinx)-0.5;    % non-integer index into input frequency bins size=(nfin,nbinx) [base=0]
+                            else                                                                            % frequencies of this layer are aligned with DFT
+                                kkf=repmat((0:nbinx-1)/nbinx,nfin,1).*repmat(meta(:,3),1,nbinx);            % non-integer index into input frequency bins size=(nfin,nbinx) [base=0]
                             end
                             kklo=floor(kkf);
                             kkf=kkf-kklo;
@@ -268,12 +272,12 @@ else                                                        % we need interpolat
                                 nbinx=min(meta(1,3),metag(1,3));        % input and output frame sizes both fixed; use input or output resolution, whichever is smaller
                         end
                         if finfix && nbinx==meta(1,3)                   % input frequency resolution is unchanged
-                            stftx=stftvl(:,1:nbinx);                     % copy existing data
-                        else % need to change the frequency resolution to nbinx bins
-                            if mod(lsym(ilay),2)                                                                                    % frequencies of this layer are shifted by 0.5 * frequency increment
-                                kkf=repmat((0.5:nbinx-0.5)/nbinx,nfin,1).*repmat(meta(:,3),1,nbinx)-0.5; % non-integer index into input frequency bins size=(nfin,nbinx) [base=0]
-                            else  % frequencies of this layer are aligned with DFT
-                                kkf=repmat((0:nbinx-1)/nbinx,nfin,1).*repmat(meta(:,3),1,nbinx); % non-integer index into input frequency bins size=(nfin,nbinx) [base=0]
+                            stftx=stftvl(:,1:nbinx);                    % copy existing data
+                        else                                            % need to change the frequency resolution to nbinx bins
+                            if mod(lsym(ilay),2)                        % frequencies of this layer are shifted by 0.5 * frequency increment
+                                kkf=mod(repmat((0.5:nbinx-0.5)/nbinx,nfin,1).*repmat(meta(:,3),1,nbinx)-0.5,meta(:,3));    % non-integer index into input frequency bins size=(nfin,nbinx) [base=0]
+                            else                                        % frequencies of this layer are aligned with DFT
+                                kkf=repmat((0:nbinx-1)/nbinx,nfin,1).*repmat(meta(:,3),1,nbinx);            % non-integer index into input frequency bins size=(nfin,nbinx) [base=0]
                             end
                             kklo=floor(kkf);
                             kkf=kkf-kklo;
@@ -345,13 +349,13 @@ else                                                        % we need interpolat
                     taxin=[2*taxin(1)-taxin(ninpre+1:-1:2); taxin; 2*taxin(end)-taxin(end-1:-1:end-ninpost)]; % add tops and tails to frame times
                     switch par.interpext
                         case 'zero'                                 %         Assume preceding/following input frames are zero
-                            stftv=cat(2,zeros(ninpre,maxbin,nlay),stftv,zeros(ninpost,maxbin,nlay));
+                            stftv=cat(1,zeros(ninpre,maxbin,nlay),stftv,zeros(ninpost,maxbin,nlay));
                             meta=[repmat(meta(1,:),ninpre,1); meta; repmat(meta(end,:),ninpost,1)];
                         case 'rep'                                  %          Assume preceding/following input frames replicate existing end frames
-                            stftv=cat(2,repmat(stftv(1,:,:),[ninpre,1,1]),stftv,repmat(stftv(end,:,:),[ninpost,1,1]));
+                            stftv=cat(1,repmat(stftv(1,:,:),[ninpre,1,1]),stftv,repmat(stftv(end,:,:),[ninpost,1,1]));
                             meta=[repmat(meta(1,:),ninpre,1); meta; repmat(meta(end,:),ninpost,1)];
                         case 'refl'                                 %    Reflect the preceding/following input frames
-                            stftv=cat(2,stftv(ninpre+1:-1:2,:,:),stftv,stftv(end-1:-1:end-ninpost,:,:));
+                            stftv=cat(1,stftv(ninpre+1:-1:2,:,:),stftv,stftv(end-1:-1:end-ninpost,:,:));
                             meta=[meta(ninpre+1:-1:2,:); meta; meta(end-1:-1:end-ninpost,:)];
                     end
                     nfin=size(stftv,1);                             % update number of input frames to include the added frames
@@ -398,15 +402,15 @@ else                                                        % we need interpolat
                                 [xq,yq,vqc]=griddata(taxv*taxfact,faxv,stftvv,taxfv*taxfact,faxfv,q.interpstft);                % do complex interpolation onto fixed grid
                                 [xq,yq,vq]=griddata(taxv*taxfact,faxv,abs(stftvv),taxfv*taxfact,faxfv,q.interpstft);            % do magnitude interpolation onto fixed grid
                                 vqa=abs(vqc);                                                                                   % magnitude of complex interpolation
-                                msk=vqa~=0;                                                                                     % complex phase irrelevant if vqa==0
-                                vq(msk)=vq(msk)./vqa(msk).*vqc(msk);                                                            % magnitude from vq and phase from vqc unless vqc==0
+                                mskv=vqa~=0;                                                                                     % complex phase irrelevant if vqa==0
+                                vq(mskv)=vq(mskv)./vqa(mskv).*vqc(mskv);                                                            % magnitude from vq and phase from vqc unless vqc==0
                             case 'crmcph'                                                                                       % interpolate cube-root power and complex phase (as in Hermansky1990)
                                 [xq,yq,vqc]=griddata(taxv*taxfact,faxv,stftvv,taxfv*taxfact,faxfv,q.interpstft);                % do complex interpolation onto fixed grid
                                 [xq,yq,vq]=griddata(taxv*taxfact,faxv,abs(stftvv).^(2/3),taxfv*taxfact,faxfv,q.interpstft);     % do cube-root-power interpolation onto fixed grid
                                 vq=vq.^(3/2);                                                                                   % undo cube-root-power compression
                                 vqa=abs(vqc);                                                                                   % magnitude of complex interpolation
-                                msk=vqa~=0;                                                                                     % complex phase irrelevant if vqa==0
-                                vq(msk)=vq(msk)./vqa(msk).*vqc(msk);                                                            % magnitude from vq and phase from vqc unless vqc==0
+                                mskv=vqa~=0;                                                                                     % complex phase irrelevant if vqa==0
+                                vq(mskv)=vq(mskv)./vqa(mskv).*vqc(mskv);                                                            % magnitude from vq and phase from vqc unless vqc==0
                         end
                         stftgl(mskp)=vq;                                                                                            % insert interpolated values into stftg layer
                         if mod(lsym(ilay),2)                                                                                        % frequencies of this layer are shifted by 0.5 * frequency increment
