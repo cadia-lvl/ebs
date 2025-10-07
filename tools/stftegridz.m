@@ -66,7 +66,8 @@ function [stftg,metag]=stftegrid(stftv,meta,grid,par,lsym)
 % (9) should perhaps force conjugate symmetry explicitly in 1-D case (e.g. in case DC and Nyquist are not exactly real)
 % (10) when adding extra frame at start and end (see ninpre/ninpost) we need to check that the metadata is corectly calculated
 % (11) would it be more efficient to do 1D interpolation only for positive frequencies and then impose conjugate symmetry at the end (as for 2D)
-% (12) Group delay compensation in line 144 is not right for Nyquist frequency if delay is an odd number of samples (not obvious what the solution is) 
+% (12) Group delay compensation in line 145 is not right for Nyquist frequency if delay is an odd number of samples (not obvious what the solution is)
+% (13) Group delay compensation in line 516 causes phase discontinuities if the frequency resolution has be made finer. e.g. if the frequency resolution is doubled then alternate output frequencies in alternate frames will be multiplied by -1.
 persistent q0
 %
 % define default parameters
@@ -506,14 +507,16 @@ else                                                        % we need interpolat
                     gdfk=v_modsym(meta(xxk,1)+meta(xxk,6),meta(xxk,3),gdfj);    % add multple of DFT length to get assumed energy peak near previous one
                     metag(:,6)=gdfj.*wtj+gdfk.*(1-wtj)-metag(:,1);              % group delay of fixed frame in samples: linear interpolate between gdfj and gdfk then compensate for start of frame
             end
-            % compensate the stft values for the metadata
-            for i=1:nfout % for now, apply the group delay frame by frame
-                nfft=metag(i,3);                     % DFT length of this frame
-                stftg(i,1)=stftg(i,1)-metag(i,4)*metag(i,3);   % add offset*DFT_length
-                stftg(i,1:nfft)=stftg(i,1:nfft).*exp(2i*pi/nfft*(metag(i,1)+metag(i,6))*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1])/metag(i,5); % apply non-integer group delay (except to Nyquist frequency)
+            % compensate the stft values for the metadata and the starting sample of each frame
+            for ilay=1:nlay
+                if lsym(ilay)<0 % complex STFT so adjust group delay using metadata
+                    for i=1:nfout % for now, apply the group delay frame by frame
+                        nfft=metag(i,3);                     % DFT length of this frame
+                        stftg(i,1,ilay)=stftg(i,1,ilay)-metag(i,4)*metag(i,3);   % subtract frame_offset*DFT_length from the DC value
+                        stftg(i,1:nfft,ilay)=stftg(i,1:nfft,ilay).*exp(2i*pi/nfft*(metag(i,1)+metag(i,6))*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1])/metag(i,5); % apply non-integer group delay (except to Nyquist frequency)
+                    end
+                end
             end
-            % stftg(:,1)=stftg(:,1)-metag(:,4).*metag(:,3);                       % subtract offset*DFT_length from STFT
-            % stftg=stftg.*exp(2i*pi*repmat(0:maxbinout-1,nfout,1).*repmat((metag(:,1)+metag(:,6))./metag(:,3),1,maxbinout))./repmat(metag(:,5),1,maxbinout); % shift origin to frame start and apply scaling & group delay
         end                                                         % if nfout>0 ... end; check if any output frames after deleting invalid output frames
     end                                                             % if nfout>0 ... end; initial check if any output frames
 end                                                                 % if strcmp(q.interpstft,'none') ... else ... end; check if any interpolation to be done
