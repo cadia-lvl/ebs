@@ -102,7 +102,7 @@ else                                                        % we need interpolat
     end
     [nfin,maxbin,nlay]=size(stftv);                         % number of input frames and maximum fft size over all frames
     if nargin<5
-        lsym=[-1;zeros(nlay-1,1)];                                 % default is Complex Hermitian symmetry for all layers
+        lsym=[-2;zeros(nlay-1,1)];                                 % default is Complex Hermitian symmetry for all layers
     end
     finfix=all(meta(:,3)==meta(1,3));                       % true if input DFT length is fixed
     % sort out output grid
