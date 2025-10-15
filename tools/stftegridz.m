@@ -18,6 +18,7 @@ function [stftg,metag]=stftegrid(stftv,meta,grid,par,lsym)
 %                                       par.interpgd=    'none';         % Interpolation of frame group delay: {'none','lin','linrep'}
 %                                       par.interpof=    'none';         % Interpolation of frame offset: {'none','lin'}
 %                                       par.interpsc=    'none';         % Interpolation of frame scale factor: {'none','lin','log'}
+%                                       par.interptz=    'none';         % Compensation of phase for the frame starting sample: {'none','origin'} 
 %          lsym(nlay)               Symmetry of layers: -2 for STFT or {0,1}={aligned,shifted} frequencies plus {0,2,4}= {Complex Hermitian, Real Symmetric, Real antisymmetric} [default: [-1; zeros(nlay-1,1)]]
 %
 %
@@ -50,6 +51,8 @@ function [stftg,metag]=stftegrid(stftv,meta,grid,par,lsym)
 %   par.interpsc    'none'          Scale in output metadata will equal zero for all frames
 %                   'lin'           Scale in output metadata will be linearly interpolated based on frame centres
 %                   'log'           Scale in output metadata will be linearly interpolated in the log domain based on frame centres
+%   par.interptz    'none'          Do not compensate phase for the frame starting sample
+%                   'origin'        Refer all phases to to sample 0 before interpolation and then to frame start after interpolation
 %
 % Refs: [1] Sibson, R. (1981). "A brief description of natural neighbor interpolation (Chapter 2)".
 %           In V. Barnett. Interpreting Multivariate Data.  Chichester: John Wiley. pp. 21--36.
@@ -68,6 +71,8 @@ function [stftg,metag]=stftegrid(stftv,meta,grid,par,lsym)
 % (11) would it be more efficient to do 1D interpolation only for positive frequencies and then impose conjugate symmetry at the end (as for 2D)
 % (12) Group delay compensation in line 145 is not right for Nyquist frequency if delay is an odd number of samples (not obvious what the solution is)
 % (13) Group delay compensation in line 516 causes phase discontinuities if the frequency resolution has be made finer. e.g. if the frequency resolution is doubled then alternate output frequencies in alternate frames will be multiplied by -1.
+% (14) DC and Nyquist entries are not handled quite right when enforcing antisymmetry. E.g. pi or N is antsymmetric with itself modulo 2pi or
+% modulo N.
 persistent q0
 %
 % define default parameters
@@ -80,6 +85,7 @@ if isempty(q0)
     q0.interpgd=    'none';         % Interpolation of frame group delay: {'none','lin','linrep'}
     q0.interpof=    'none';         % Interpolation of frame offset: {'none','lin'}
     q0.interpsc=    'none';         % Interpolation of frame scale factor: {'none','lin','log'}
+    q0.interptz=    'none';         % Compensation of phase for the frame starting sample: {'none','origin'}
 end
 %
 % update algorithm parameters
@@ -88,6 +94,7 @@ if nargin<3
 else
     q=v_paramsetch(q0,par);                                 % use the par input to update the parameters in q0
 end
+interptzq=1-strcmp(q.interptz,'none');                      % flag to indicate that we must compensate phase for the frame starting sample
 if strcmp(q.interpstft,'none')                              % no interpolation needed, so ...
     stftg=stftv;                                            % ... copy across stft ...
     metag=meta;                                             % ... and metadata
@@ -142,7 +149,7 @@ else                                                        % we need interpolat
                     if lsym(ilay)<0 % complex STFT so adjust group delay using metadata
                         for i=1:nfin % for now undo the group delay frame by frame compensating for start-sample, scale, and group-delay: meta(:,[1 5 6]).
                             nfft=meta(i,3);                     % DFT length of this frame
-                            stftvl(i,1:nfft)=stftv(i,1:nfft,ilay).*exp(-2i*pi/nfft*(meta(i,1)+meta(i,6))*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1])*meta(i,5); % apply non-integer group delay (except to Nyquist frequency)
+                            stftvl(i,1:nfft)=stftv(i,1:nfft,ilay).*exp(-2i*pi/nfft*(interptzq*meta(i,1)+meta(i,6))*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1])*meta(i,5); % apply non-integer group delay (except to Nyquist frequency)
                             stftvl(i,1)=stftvl(i,1)+meta(i,4)*meta(i,3);   % add offset*DFT_length
                         end
                     else
@@ -338,7 +345,7 @@ else                                                        % we need interpolat
                 %   2-D Interpolation                                                                        %
                 %                                                                                            %
                 %  Note that we only interpolate the first half of the spectrum (i.e. +ve frequencies) and   %
-                %  assume conjugate symmetry to calculate the remainder                                      %
+                %  use symmetry to calculate the remainder                                      %
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % sort out input data coordinates
                 ninpre=sum(2*taxin(1)-taxout(1)>=taxin); % number of reflected inputs we need to pre-append
@@ -368,19 +375,19 @@ else                                                        % we need interpolat
                 mskp=repmat(0:maxbinout-1,nfout,1)<=repmat(0.5*metag(:,3),1,maxbinout);                                 % mask to restrict output to positive frequencies only
                 taxfv=repmat(taxout,maxbinout,1);                   % output frame times
                 taxfv=taxfv(mskp);
-                taxfact=q.interpfsps;    % relative weighting of time-frequency errors in fs/sample
-                stftgl=NaN(nfout,maxbinout);                     % space for output STFT for this layer
+                taxfact=q.interpfsps;                               % relative weighting of time-frequency errors in fs/sample
+                stftgl=NaN(nfout,maxbinout);                        % space for output STFT for this layer
                 for ilay=1:nlay
-                    stftvl=zeros(nfin,maxbin); % space for this layer
-                    if lsym(ilay)<0 % complex STFT so adjust group delay using metadata
-                        for i=1:nfin % for now undo the group delay frame by frame
-                            nfft=meta(i,3);                     % DFT length of this frame
-                            stftvl(i,1:nfft)=stftv(i,1:nfft,ilay).*exp(-2i*pi/nfft*(meta(i,1)+meta(i,6))*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1])*meta(i,5); % apply non-integer group delay (except to Nyquist frequency)
-                            stftvl(i,1)=stftvl(i,1)+meta(i,4)*meta(i,3);   % add offset*DFT_length
+                    stftvl=zeros(nfin,maxbin);                      % space for this layer
+                    if lsym(ilay)<0                                 % complex STFT so adjust group delay using metadata
+                        for i=1:nfin                                % for now undo the group delay frame by frame
+                            nfft=meta(i,3);                         % DFT length of this frame
+                            stftvl(i,1:nfft)=stftv(i,1:nfft,ilay).*exp(-2i*pi/nfft*(interptzq*meta(i,1)+meta(i,6))*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1])*meta(i,5); % apply non-integer group delay (except to Nyquist frequency)
+                            stftvl(i,1)=stftvl(i,1)+meta(i,4)*meta(i,3);            % add offset*DFT_length
                         end
-                        stftvv=stftvl(:);                                                       % make current layer into a column vector
+                        stftvv=stftvl(:);                                           % make current layer into a column vector
                     else
-                        stftvv=reshape(stftv(:,:,ilay),[],1);                                                       % make current layer into a column vector
+                        stftvv=reshape(stftv(:,:,ilay),[],1);                       % make current layer into a column vector
                     end
                     %%%% the next few lines don't work well for frames less than 7 samples long (luckily these are probably rare) but means we don't have to add frequency samples
                     % better would be to calculate how many wrap-around samples we need at each end to ensure that the vertices needed for interpolation are present
@@ -513,7 +520,7 @@ else                                                        % we need interpolat
                     for i=1:nfout % for now, apply the group delay frame by frame
                         nfft=metag(i,3);                     % DFT length of this frame
                         stftg(i,1,ilay)=stftg(i,1,ilay)-metag(i,4)*metag(i,3);   % subtract frame_offset*DFT_length from the DC value
-                        stftg(i,1:nfft,ilay)=stftg(i,1:nfft,ilay).*exp(2i*pi/nfft*(metag(i,1)+metag(i,6))*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1])/metag(i,5); % apply non-integer group delay (except to Nyquist frequency)
+                        stftg(i,1:nfft,ilay)=stftg(i,1:nfft,ilay).*exp(2i*pi/nfft*(interptzq*metag(i,1)+metag(i,6))*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1])/metag(i,5); % apply non-integer group delay (except to Nyquist frequency)
                     end
                 end
             end
