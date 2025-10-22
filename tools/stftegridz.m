@@ -71,8 +71,8 @@ function [stftg,metag]=stftegrid(stftv,meta,grid,par,lsym)
 % (11) would it be more efficient to do 1D interpolation only for positive frequencies and then impose conjugate symmetry at the end (as for 2D)
 % (12) Group delay compensation in line 145 is not right for Nyquist frequency if delay is an odd number of samples (not obvious what the solution is)
 % (13) Group delay compensation in line 516 causes phase discontinuities if the frequency resolution has be made finer. e.g. if the frequency resolution is doubled then alternate output frequencies in alternate frames will be multiplied by -1.
-% (14) DC and Nyquist entries are not handled quite right when enforcing antisymmetry. E.g. pi or N is antsymmetric with itself modulo 2pi or
-% modulo N.
+% (14) DC and Nyquist entries are not handled quite right when enforcing antisymmetry. E.g. pi or N is antsymmetric with itself modulo 2pi or modulo N.
+
 persistent q0
 %
 % define default parameters
