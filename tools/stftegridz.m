@@ -1,4 +1,4 @@
-function [stftg,metag]=stftegrid(stftv,meta,grid,par,lsym)
+function [stftg,metag]=stftegridz(stftv,meta,grid,par,lsym)
 % Interpolation of variable frame length STFT onto a regular grid + multiple layers
 %
 % Usage:    [stftv,metav]=stfte(s,metain,[],par);                   % epoch-based STFT
