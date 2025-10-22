@@ -19,7 +19,7 @@ function [stftg,metag]=stftegrid(stftv,meta,grid,par,lsym)
 %                                       par.interpof=    'none';         % Interpolation of frame offset: {'none','lin'}
 %                                       par.interpsc=    'none';         % Interpolation of frame scale factor: {'none','lin','log'}
 %                                       par.interptz=    'none';         % Compensation of phase for the frame starting sample: {'none','origin'} 
-%          lsym(nlay)               Symmetry of layers: -2 for STFT or {0,1}={aligned,shifted} frequencies plus {0,2,4}= {Complex Hermitian, Real Symmetric, Real antisymmetric} [default: [-1; zeros(nlay-1,1)]]
+%          lsym(nlay)               Symmetry of layers: -2 for STFT or {0,1}={aligned,shifted} frequencies plus {0,2,4}= {Complex Hermitian, Real Symmetric, Real antisymmetric} [default: [-2; zeros(nlay-1,1)]]
 %
 %
 % Outputs: stftg(nfout,nbin,nlay)  STFT coefficient array
