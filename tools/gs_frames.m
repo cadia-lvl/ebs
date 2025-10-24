@@ -22,7 +22,7 @@ persistent q0
 if isempty(q0)
     q0.pitchlim=[40 50 400];                               % {min target max} pitch (Hz)
     q0.gcifrac=0.3;                                        % position of GCI in analysis frame
-    q0.GCImethod='YAGA';
+    q0.GCImethod='DYPSA';
 end
 if nargin<3
     q=q0;
@@ -34,6 +34,9 @@ ns=length(s);                                           % length of speech signa
 switch q.GCImethod                                      % find gci's
     case 'YAGA'
         [gci,goi] = dypsagoi(s,fs);
+        gci=gci/fs;
+    case 'DYPSA'
+        [gci,goi] = v_dypsa(s,fs);
         gci=gci/fs;
     case 'SEDREAMS'
         [fx,vad,srh,fxt] = pitch_srh(s,fs,q.pitchlim(1),q.pitchlim(3));     % find pitch track
@@ -86,4 +89,5 @@ gciz=gcik(end)+round((1:nins)*incs);
 % add the inserted gcis
 gcia=[gcix gciy gciz];
 gcim=sort([gcik gcia]);
+
 framek=gcim(3:end)-round(q.gcifrac*(gcim(3:end)-gcim(2:end-1)));  % frame end samples
