@@ -109,7 +109,7 @@ else                                                        % we need interpolat
     end
     [nfin,maxbin,nlay]=size(stftv);                         % number of input frames and maximum fft size over all frames
     if nargin<5
-        lsym=[-2;zeros(nlay-1,1)];                                 % default is Complex Hermitian symmetry for all layers
+        lsym=[-2;zeros(nlay-1,1)];                          % default is Complex Hermitian symmetry for all layers
     end
     finfix=all(meta(:,3)==meta(1,3));                       % true if input DFT length is fixed
     % sort out output grid
@@ -485,7 +485,7 @@ else                                                        % we need interpolat
                     end
 
                 end
-            end                                                     % end of 1D or 2D interpolation: if strcmp(q.interpstft,'indep') ... else ... end
+            end     % end of 1D or 2D interpolation: if strcmp(q.interpstft,'indep') ... else ... end
             % now sort out the interpolation of the metadata
             [xxi,xxf]=v_interval(taxout,taxin);                                         % i'th fixed frame centre, taxout(i), lies between taxin(xxi(i)) and taxin(xxi(i)+1)
             % interpolate the frame offset values
@@ -501,7 +501,7 @@ else                                                        % we need interpolat
                     metag(:,5)=exp(log(meta(xxi,5)).*(1-xxf)+log(meta(xxi+1,5)).*xxf);  % linearly interpolate the log frame scale factor
             end
             % Calculate goup delay of output frames by using linear interpolation between the group delays of the input frames whose centres are either side of the
-            % centre of the output frame while compensating for the starting sample of each of the frames.
+            % centre of the output frame while optionally compensating for the starting sample of each of the frames.
             switch q.interpgd
                 case 'lin'
                     metag(:,6)=(meta(xxi,1)+meta(xxi,6)).*(1-xxf)+(meta(xxi+1,1)+meta(xxi+1,6)).*xxf-metag(:,1);                 % linearly interpolate the group delay
@@ -524,9 +524,9 @@ else                                                        % we need interpolat
                     end
                 end
             end
-        end                                                         % if nfout>0 ... end; check if any output frames after deleting invalid output frames
-    end                                                             % if nfout>0 ... end; initial check if any output frames
-end                                                                 % if strcmp(q.interpstft,'none') ... else ... end; check if any interpolation to be done
+        end     % if nfout>0 ... end; check if any output frames after deleting invalid output frames
+    end     % if nfout>0 ... end; initial check if any output frames
+end     % if strcmp(q.interpstft,'none') ... else ... end; check if any interpolation to be done
 if ~nargout && size(stftg,1)>0
     imagesc(taxout,faxf,db(abs(stftg(:,1:nbinp)))'); axis 'xy'; set(gca,'clim',get(gca,'clim')*[0;1]+[-40 0]);
     if ~strcmp(q.interpstft,'none')
