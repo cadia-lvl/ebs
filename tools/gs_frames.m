@@ -6,7 +6,7 @@ function [framek,gci]=gs_frames(s,fs,p)
 %          p                optional structure giving procesing options:
 %                               p.pitchlim       vector with [min target max] pitch (Hz)
 %                               p.gcifrac        position of GCI in analysis frame [0.3]
-%                               p.GCImethod      either 'YAGA' (default) or 'SEDREAMS'
+%                               p.GCImethod      either 'DYPSA' (default), 'YAGA' or 'SEDREAMS'
 %
 % Outputs: framek(1,nframe) Vector containng the index of the last sample in each frame
 %          gci(1,ngci)      Glottal Closure Instants (seconds, origin @ s(1)) (dummy GCIs are inserted if necessary to make spacing <= 1/min-pitch)
