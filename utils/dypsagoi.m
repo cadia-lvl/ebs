@@ -170,6 +170,7 @@ if(strcmp(IF,'mark'))
     
     % perform LPC analysis, AC method with Hamming windowing
     [ar, e, Ts] = lpcauto(s_used,lpcord,floor([dy_lpcstep dy_lpcdur]*fs));
+    ar(isnan(ar))=0; % remove NaN entries that can arise if s_used has a long string of zeros
     udash = lpcifilt(spf,ar,Ts);    % Pad gives same alignment as original LPC residual.
 elseif(strcmp(IF,'iaif'))
     s_used=filter([1 -exp(-2*pi*dy_preemph/fs)],1,s);
