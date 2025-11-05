@@ -4,6 +4,10 @@ function stfteplot(stfte,meta,fs,dbr)
 %           meta(:,6)               meta(i,1:3)=[first-sample frame-length DFT-length] in samples for frame i
 %           fs                      sample frequency in Hz (negative for shifted frequencies) [default=1]
 %           dbr                     range in dB either [min max] or [range] or a linear scale: 0=abs value, -1=real part, -2=imag part [default=40]
+%
+% Note that the time-axis boundaries between patches are placed midway between the frame centres rather than
+% on the frame boundaries defined by meta(:,1:2)
+%
 if nargin<4 || isempty(dbr)
     dbr=40;
 end
