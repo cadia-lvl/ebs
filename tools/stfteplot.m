@@ -5,9 +5,6 @@ function stfteplot(stfte,meta,fs,dbr)
 %           fs                      sample frequency in Hz (negative for shifted frequencies) [default=1]
 %           dbr                     range in dB either [min max] or [range] or a linear scale: 0=abs value, -1=real part, -2=imag part [default=40]
 %
-% Note that the time-axis boundaries between patches are placed midway between the frame centres rather than
-% on the frame boundaries defined by meta(:,1:2)
-%
 if nargin<4 || isempty(dbr)
     dbr=40;
 end
@@ -19,7 +16,11 @@ fs=abs(fs); % make fs positive
 dblin=numel(dbr)==1 && dbr<=0; % for a linear scale:  0=abs value, -1=real part, -2=imag part
 [nframe,maxbin]=size(stfte);
 frc=meta(:,1:2)*[1;.5]-0.5;                                                     % frame centres
-fre=0.5*[[3 -1]*frc(1:2); frc(1:end-1)+frc(2:end); [-1 3]*frc(end-1:end)];      % frame edges in samples (needs >=2 frames)
+if nframe<2
+    fre=frc(1)+[-0.5;0.5]*meta(1,2); % frame boundaries
+else
+    fre=[meta(1,1)-0.5; (frc(1:end-1).*meta(2:end,2)+frc(2:end).*meta(1:end-1,2))./(meta(2:end,2)+meta(1:end-1,2)); frc(end)+0.5*meta(end,2)];      % frame edges in samples (needs >=2 frames)
+end
 nmap=size(colormap,1);                                                          % number of colormap entries
 maxbinp=1+floor(maxbin/2);                                                      % max number of positive frequencies
 patylo=max(repmat(sh-1:2:maxbin+sh-1,nframe,1)./(2*repmat(meta(:,3),1,maxbinp)),0);  % lower edge of each patch in fraction of fs
@@ -51,19 +52,19 @@ if dblin                                                                        
     if clim(1)==clim(2)
         clim=clim+[-0.1 0.1];                           % force colour range to be non-vacuuous
     end
-    else
-        patcm=db(stfte(:,1:maxbinp));                   % patch value in dB
-        if numel(dbr)>1                                 % lower and upper dB values are specified
-            clim=[dbr(1) dbr(2)];
-        else                                            % dB range is specified
-            clim=[-dbr(1) 0]+max(patcm(:));
-        end
-        clab="Value (dB)";
+else
+    patcm=db(stfte(:,1:maxbinp));                   % patch value in dB
+    if numel(dbr)>1                                 % lower and upper dB values are specified
+        clim=[dbr(1) dbr(2)];
+    else                                            % dB range is specified
+        clim=[-dbr(1) 0]+max(patcm(:));
     end
-    cla;                                                                            % clear figure: should maybe check first if "hold" is on
-    patch(patx/fs,paty*fs,patcm(patxv)','EdgeColor','none'); % draw patches; convert x to seconds and y to Hz
-    cbh=colorbar;
-    set(gca,'CLim',clim,'xlim',[fre(1) fre(end)]/fs,'ylim',[0 0.5*fs]);
+    clab="Value (dB)";
+end
+cla;                                                                            % clear figure: should maybe check first if "hold" is on
+patch(patx/fs,paty*fs,patcm(patxv)','EdgeColor','none'); % draw patches; convert x to seconds and y to Hz
+cbh=colorbar;
+set(gca,'CLim',clim,'xlim',[fre(1) fre(end)]/fs,'ylim',[0 0.5*fs]);
 colormap("parula");
 cblabel(clab);
 if fs==1
