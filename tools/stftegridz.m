@@ -142,12 +142,18 @@ else                                                        % we need interpolat
             nfout=length(taxout);                           % revised number of output frames
         end
         if nfout>0                                          % check again if there are any frames to output
-            stftg=NaN(nfout,maxbinout,nlay);                     % space for output STFT
-            if interpindep                 % if independent interpolation in time and frequency ...
+            stftg=NaN(nfout,maxbinout,nlay);                % space for output STFT
+            % we save the metadate and input frame times below and then restore them before processing each layer becuse they get
+            % altered if any extrapolation is needed. This is quite crude and could perhaps be made more efficient.
+            meta0=meta;                                     % save the original metadata
+            taxin0=taxin;                                   % save the original input frame times
+            if interpindep                                      % if independent interpolation in time and frequency ...
                 for ilay=1:nlay
-                    stftvl=zeros(nfin,maxbin); % space for this layer
-                    if lsym(ilay)<0 % complex STFT so adjust group delay using metadata
-                        for i=1:nfin % for now undo the group delay frame by frame compensating for start-sample, scale, and group-delay: meta(:,[1 5 6]).
+                    meta=meta0;                                 % restore the original metadata
+                    taxin=taxin0;                               % restore the original input frame times
+                    stftvl=zeros(nfin,maxbin);                  % space for this layer
+                    if lsym(ilay)<0                             % complex STFT so adjust group delay using metadata
+                        for i=1:nfin                            % for now undo the group delay frame by frame compensating for start-sample, scale, and group-delay: meta(:,[1 5 6]).
                             nfft=meta(i,3);                     % DFT length of this frame
                             stftvl(i,1:nfft)=stftv(i,1:nfft,ilay).*exp(-2i*pi/nfft*(interptzq*meta(i,1)+meta(i,6))*[0:ceil(nfft/2)-1 zeros(1,1-mod(nfft,2)) 1-ceil(nfft/2):-1])*meta(i,5); % apply non-integer group delay (except to Nyquist frequency)
                             stftvl(i,1)=stftvl(i,1)+meta(i,4)*meta(i,3);   % add offset*DFT_length
