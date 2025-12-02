@@ -137,7 +137,7 @@ function [x,cf,xi,il,ih]=filtbankmd(p,n,fs,fl,fh,w)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Notes:
-% (1) In the comments, "FFT bin_0" assumes DC = bin 0 whereas "FFT bin_1" means DC = bin 1nfout
+% (1) In the comments, "FFT bin_0" assumes DC = bin 0 whereas "FFT bin_1" means DC = bin 1
 % (2) "input" and "output" need to be interchanged if the 'i' option is given
 
 if nargin<6 || isempty(w)               % if no mode option, w, is specified
