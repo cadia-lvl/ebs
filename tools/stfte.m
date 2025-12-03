@@ -14,12 +14,12 @@ function [stft,meta,gdsh,grpd,dgrpd]=stfte(s,metain,maxfft,par)
 %                                       par.groupdelay  'none'      linear phase component: {'none','dct','ewgd','cplx','phgr','gcif','gpdf','fmnb','xcor'} + optional 'int' suffix
 %                                       par.fmbound     [0.3 0.5]   group delay bounds for par.groupdelay='fmnb'
 %
-% Outputs: stft(nframe,maxfft)      complex STFT coefficients
+% Outputs: stft(nframe,maxfft)      complex STFT coefficients. Each row is padded with NaN's after the first metain(*,2) values.
 %          meta(nframe,10)           output metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay (samples), EWGD (samples), EWPD (samples), DC phase (rad), DC group delay (samples)]
 %                                   Note that if there are less than 3 output arguments, meta(:,10) will be set to zero.
-%          gdsh(nframe,maxfft)      group delay in samples at shifted frequencies: (0.5:N-0.5)*fs/N. This is calculated from the unwrapped difference between phases of successive DFT bins.
-%          grpd(nframe,maxfft)      group delay in samples. This is calculated from the slope of a quadratic fitted to three consecutive points along the frequency axis.
-%          dgrpd(nframe,maxfft)     derivative of group delay in samples^2. This is calculated from a quadratic fitted to three consecutive points along the frequency axis.
+%          gdsh(nframe,maxfft)      group delay in samples at shifted frequencies: (0.5:N-0.5)*fs/N. This is calculated from the unwrapped difference between phases of successive DFT bins. Each row is padded with NaN's after the first metain(*,2) values.
+%          grpd(nframe,maxfft)      group delay in samples. This is calculated from the slope of a quadratic fitted to three consecutive points along the frequency axis. Each row is padded with NaN's after the first metain(*,2) values.
+%          dgrpd(nframe,maxfft)     derivative of group delay in samples^2. This is calculated from a quadratic fitted to three consecutive points along the frequency axis. Each row is padded with NaN's after the first metain(*,2) values.
 %
 %
 % Note that the stft phase (modulo 2pi) for frame i can be recovered exactly from meta(i,:) and either gdsh(i,:) or dgrpd(i,:) as:
@@ -103,7 +103,7 @@ end
 sfr=zeros(nframe,maxfft);                                       % space for frames (one per row)
 stft=NaN(nframe,maxfft);                                        % space for stft; unused entries will be left as NaN
 grpd=NaN(nframe,maxfft);                                        % space for group delay; unused entries will be left as NaN
-gsh=NaN(nframe,maxfft);                                        % space for shifted group delay; unused entries will be left as NaN
+gdsh=NaN(nframe,maxfft);                                        % space for shifted group delay; unused entries will be left as NaN
 dgrpd=NaN(nframe,maxfft);                                       % space for derivative of group delay; unused entries will be left as NaN
 sfrix=repmat(0:maxfft-1,nframe,1)+repmat(meta(:,1),1,maxfft);   % index into s for frame samples
 sfrmk=repmat(1:maxfft,nframe,1)<=repmat(meta(:,2),1,maxfft);    % mask for valid values
