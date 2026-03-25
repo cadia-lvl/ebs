@@ -1,8 +1,10 @@
 function [stftg,metag]=stftegridz(stftv,meta,grid,par,lsym)
 % Interpolation of variable frame length STFT onto a regular grid + multiple layers
 %
-% Usage:    [stftv,metav]=stfte(s,metain,[],par);                   % epoch-based STFT
-%           [stft,meta]=stftegrid(stftv,metav,grid,par);            % map onto a fixed grid unless par.interpstft='none'
+% Usage:    [stftx,metax,gdsh,grpdx,dgrpdx]=stfte(s,metain,[],par);                     % epoch-based STFT with additional group delay outputs
+%           gdshew=v_modsym(gdsh-repmat(metax(:,8),1,size(gdsh,2)),metax(:,3));         % calculate shifted group delay with EWPD subtracted
+%           stftl=cat(3,stftx,gdsh,grpdx,dgrpdx,gdshew);                                % create five layers in stftl(:,:,5)
+%           [stftg,metag]=stftegridz(stftl,metax,grid,par,[-2 3 2 4 3]);                % map onto a fixed grid
 %
 %  Inputs: stftv(nfin,maxbin,nlay)     STFT coefficient array with nlay layers
 %          meta(nfin,nmeta)       metadata: meta(*,:)=[first-sample, frame-length, dft-length, offset, scale-factor, group-delay (samples)]
@@ -181,7 +183,7 @@ else                                                        % we need interpolat
                         % Stage (1): interpolate in frequency onto intermediate grid
                         switch 2*foutfix+finfix                         % switch according to input and/or output being fixed frame
                             case 0
-                                nbinx=max(maxbin,maxbinout);        % input and output frame sizes both variable: choose densest
+                                nbinx=max(maxbin,maxbinout);            % input and output frame sizes both variable: choose densest
                             case 1
                                 nbinx=meta(1,3);                        % fixed input frame size;  output frame sizes variable
                             case 2
@@ -190,7 +192,7 @@ else                                                        % we need interpolat
                                 nbinx=min(meta(1,3),metag(1,3));        % input and output frame sizes both fixed; use input or output resolution, whichever is smaller
                         end
                         if finfix && nbinx==meta(1,3)                   % input frequency resolution is unchanged
-                            stftx=stftvl(:,1:nbinx);                     % copy existing complex stft
+                            stftx=stftvl(:,1:nbinx);                    % copy existing complex stft
                             if ~isempty(stfty)
                                 stfty=stfty(:,1:nbinx);                 % and magnitude-domain version if it exists
                             end
@@ -200,13 +202,13 @@ else                                                        % we need interpolat
                             else                                                                            % frequencies of this layer are aligned with DFT
                                 kkf=repmat((0:nbinx-1)/nbinx,nfin,1).*repmat(meta(:,3),1,nbinx);            % non-integer index into input frequency bins size=(nfin,nbinx) [base=0]
                             end
-                            kklo=floor(kkf);
-                            kkf=kkf-kklo;
-                            kkhi=mod(kklo+1,meta(:,3));                 % make references to fs wrap around to 0
-                            frix=repmat((1:nfin)',1,nbinx);             % portion of linear index due to frame
-                            stftx=stftvl(frix+nfin*kklo).*(1-kkf)+stftvl(frix+nfin*kkhi).*kkf; % interpolate in frequency direction
+                            kklo=floor(kkf);                                                            % round down to next lower frequency bin
+                            kkf=kkf-kklo;                                                               % weight to apply to next higher frequency bin
+                            kkhi=mod(kklo+1,meta(:,3));                                                 % next higher frequency bin (references to fs wrap around to 0)
+                            frix=repmat((1:nfin)',1,nbinx);                                             % index of DC coefficient in each frame (nfin,nbinx)
+                            stftx=stftvl(frix+nfin*kklo).*(1-kkf)+stftvl(frix+nfin*kkhi).*kkf;          % interpolate complex stft in frequency direction
                             if ~isempty(stfty)
-                                stfty=stfty(frix+nfin*kklo).*(1-kkf)+stfty(frix+nfin*kkhi).*kkf; % interpolate in frequency direction
+                                stfty=stfty(frix+nfin*kklo).*(1-kkf)+stfty(frix+nfin*kkhi).*kkf;        % interpolate "magnitude" in frequency direction (if required)
                             end
                         end
                         % Stage (2): interpolate in time onto target time grid (taxout)
