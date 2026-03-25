@@ -258,17 +258,18 @@ nxtr=nxtr(jfall);                                   % next post to the right of 
 % multiplied by triangular weights that decreases from 1 to 0 between the two bins. The value at an output bin
 % is equal to the integral of the interpolated spectrum multiplied by a triangular weight that decreases from
 % 1 to 0 either side of the output bin. Thus, if all input/output bins are sorted into ascending order, the
-% interval between two adjacent bins contains four partial triangles (a.k.a. trapeziums): two "lower" triangles
-% that increase with frequency and two "upper" triangles that decrease with frequency. We need to integrate the
-% resultant four input-output trapezium products and add the integrals onto the sum for the appropriate output bins.
-% Each triangle has a "post" at one end and is zero at the other end; we enumerate the triangle pairs by pairing
-% all input and output triangles with the first available triangle of the other type (i.e. output or input) whose
+% interval between two adjacent bins contains two partial triangles (a.k.a. trapeziums) from the input and two
+% from the output: in each case, a "lower" triangle that increases with frequency and an "upper" triangles that
+% decreases with frequency. We need to integrate the resultant four input-output trapezium products and add the
+% integrals onto the sum for the appropriate output bins.
+% Each triangle has two "nodes": a "post" at one end and a "zero" at the other end. We enumerate the triangle pairs by pairing
+% each input and output triangle with the first available triangle of the other type (i.e. output or input) whose
 % rightmost node is to the right of the entire first triangle.
 %
 % The general result for integrating the product of two trapesiums with
 % heights (a,b) and (c,d) over a width x is (ad+bc+2bd+2ac)*x/6
 %
-% integrate product of lower triangles whose posts (and rightmost nodes) are ix1 and jx1
+% integrate product of a lower triangle (with "post" ix1) and the lower triangle whose "post" (jx1) is to its right
 %
 msk0=(ffact>0);                                     % posts with a non-zero magnitude
 msk=msk0 & (ffact(nxtr)>0);                         % select triangle pairs with both posts having non-zero magnitudes
@@ -278,7 +279,7 @@ vfgx=foutin(ix1)-foutin(jx1-1);                     % portion of triangle attach
 yx=min(wleft(ix1),vfgx);                            % integration length. Maybe more efficient: dfall=diff(fall); yx=dfall(jfall(ix1)-1)
 wx1=ffact(ix1).*ffact(jx1).*yx.*(wleft(ix1).*vfgx-yx.*(0.5*(wleft(ix1)+vfgx)-yx/3))./(wleft(ix1).*wleft(jx1)+(yx==0));
 
-% integrate product of upper triangles whose posts are ix2 and jx2 and whose rightmost nodes are ix2+1 and jx2+1
+% integrate product of an upper triangle (with "zero" ix2+1) and the upper triangle whose "zero" (jx2+1) is to its right
 
 nxtu=max([nxtr(2:end)-1 0],1);                      % post of the upper triangle of opposite type whose rightmost end is to the right of this triangle's rightmost end
 msk=msk0 & (ffact(nxtu)>0);                         % select triangle pairs with both posts having non-zero magnitudes
@@ -289,7 +290,7 @@ yx=min(wright(ix2),vfgx);                           % integration length
 yx(foutin(jx2+1)<foutin(ix2+1))=0;                  % zap invalid triangles where the rightmost ends are in the wrong order
 wx2=ffact(ix2).*ffact(jx2).*yx.^2.*((0.5*(wright(jx2)-vfgx)+yx/3))./(wright(ix2).*wright(jx2)+(yx==0));
 
-% integrate lower triangle and upper triangle that ends to its right
+% integrate product of a lower triangle (with "post" ix3) and the upper triangle whose "zero" (jx3+1) is to its right
 
 nxtu=max(nxtr-1,1);                                 % post of the upper triangle of opposite type whose rightmost end is to the right of this triangle's post
 msk=msk0 & (ffact(nxtu)>0);                         % select triangle pairs with both posts having non-zero magnitudes
@@ -300,7 +301,7 @@ yx=min(wleft(ix3),vfgx);                            % integration length
 yx(foutin(jx3+1)<foutin(ix3))=0;                    % zap invalid triangles where the rightmost ends are in the wrong order
 wx3=ffact(ix3).*ffact(jx3).*yx.*(wleft(ix3).*(wright(jx3)-vfgx)+yx.*(0.5*(wleft(ix3)-wright(jx3)+vfgx)-yx/3))./(wleft(ix3).*wright(jx3)+(yx==0));
 
-% integrate upper triangle and lower triangle that starts to its right
+% integrate product of an upper triangle (with "zero" ix4+1) and the lower triangle whose "post" (jx4) is to its right
 
 nxtu=[nxtr(2:end) 1];
 msk=msk0 & (ffact(nxtu)>0);                         % select triangle pairs with both posts having non-zero magnitudes
