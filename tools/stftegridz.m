@@ -171,7 +171,7 @@ else                                                        % we need interpolat
                     % Stages (1) and/or (3) may be omitted if they are redundant                %
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     if lsym(ilay)<2                                                                                             % complex hermitian data
-                        % convert input stft to the intepolation domain
+                        % convert input stft to the interpolation domain
                         switch q.interpdom
                             case 'magcph'                               % interpolate magnitude and complex phase
                                 stfty=abs(stftvl);

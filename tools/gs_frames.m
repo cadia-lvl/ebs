@@ -13,7 +13,7 @@ function [framek,gci]=gs_frames(s,fs,p)
 %
 % If the GCI option p.GCImethod='SEDREAMS' is selected, this routine uses pitch_srh and
 % gci_sedreams from covarep. Note that after installing covarep, you must remove its version
-% of voicebox from the MATLAB path (because it is out-of-date).
+% of voicebox from the MATLAB path because it is out-of-date.
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   algorithm Parameters
