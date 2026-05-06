@@ -133,7 +133,6 @@ else                                                        % we need interpolat
     foutfix=all(metag(:,3)==metag(1,3));                    % true if output DFT length is fixed
     stftg=NaN(0,maxbinout,nlay);                                 % zero-frame output STFT in case nfout is or becomes zero
     if nfout>0                                              % if there are any frames to output ...
-        maxbinout=size(stftg,2);                            %   max number of DFT bins in output
         taxin=meta(:,1:2)*[1;0.5]-0.5;                      %   centre of input frames in samples (start @ 1)
         taxout=metag(:,1:2)*[1;0.5]-0.5;                    %   centres of output frames in samples (start @ 1)
         interpindep=strcmp(q.interpstft,'indep');           % doing 1D interpolation
