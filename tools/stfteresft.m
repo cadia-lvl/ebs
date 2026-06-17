@@ -24,52 +24,52 @@ end
 %
 % update algorithm parameters
 if nargin<3
-    q=q0;                               % just copy default parameters
+    q=q0;                       % just copy default parameters
 else
-    q=v_paramsetch(q0,par);             % update parameters from par input
+    q=v_paramsetch(q0,par);     % update parameters from par input
 end
-nfin=size(stftx,1);                         % number of inoput frames
-nfout=floor((sum(meta(end,1:2))-meta(1,1))/flen); % number of output frames
-stftc=zeros(nfin,nfft);                        % space for frequency-interpolated complex STFT
-metag=[(0:nfout-1)'*flen+meta(1,1) repmat([flen nfft 1 0 0 0 0],nfout,1)];    % create output metadata with frame starting sample, frame len and DFT len
+nfin=size(stftx,1);                                                         % number of input frames
+nfout=floor((sum(meta(end,1:2))-meta(1,1))/flen);                           % number of output frames
+stftc=zeros(nfin,nfft);                                                     % space for frequency-interpolated complex STFT
+metag=[(0:nfout-1)'*flen+meta(1,1) repmat([flen nfft 1 0 0 0 0],nfout,1)];  % create output metadata with frame starting sample, frame len and DFT len
 mtt=stftresm(meta(:,2),metag(:,2),q.interpp);
 switch q.interpdom
-    case 'cplx'                                         % interpolate complex values (i.e. real and imaginary separately)
-        for i=1:nfin                                    % loop through each frame
-            nfftx=meta(i,3);                            % input DFT length
-            stftc(i,:)=stftx(i,1:nfftx)*fftresm(nfftx,nfft,q.interpp);   % do frequency interpolation
+    case 'cplx'                                                 % interpolate complex values (i.e. real and imaginary separately)
+        for i=1:nfin                                                    % loop through each frame
+            nfftx=meta(i,3);                                            % input DFT length
+            stftc(i,:)=stftx(i,1:nfftx)*fftresm(nfftx,nfft,q.interpp);  % do frequency interpolation
         end
-        stftg=mtt*stftc;                                % do time interpolation
-    case 'magcph'                                       % interpolate magnitude and complex phase
-        stfty=zeros(nfin,nfft);                        % space for magnitude interpolated STFT
-        for i=1:nfin                                    % loop through each frame
-            nfftx=meta(i,3);                            % input DFT length
-            mtf=fftresm(nfftx,nfft,q.interpp);       % frequency transformation matrix
-            stftc(i,:)=stftx(i,1:nfftx)*mtf;            % interpolate complex STFT
-            stfty(i,:)=abs(stftx(i,1:nfftx))*mtf;       % interpolate magnitude STFT
-        end
-        if q.interpseq                                % convert to intermediate complex STFT
-            msk=stftc~=0;                               % only bother with phase if magnitude is non-zero
-            stfty(msk)=stfty(msk).*stftc(msk)./abs(stftc(msk)); % impose phase from complex interpolation (except where complex STFT is zero)
-            stftc=mtt*stfty; % time-interpolate the complex intermediate STFT
-            stftg=mtt*abs(stfty); % time-interpolate the magnitude
-            msk=stftc~=0;  % mask for phase imposition
-            stftg(msk)=stftg(msk).*stftc(msk)./abs(stftc(msk)); % impose phase from complex interpolation (except where complex STFT is zero)
-        else % leave intermediate STFT as magnitude+phase
-            stftc=mtt*stftc; % time-interpolate the complex intermediate STFT
-            stftg=mtt*stfty; % time-interpolate the magnitude
-            msk=stftc~=0;  % mask for phase imposition
-            stftg(msk)=stftg(msk).*stftc(msk)./abs(stftc(msk)); % impose phase from complex interpolation (except where complex STFT is zero)
-        end
-    case 'crmcph'                                               % interpolate cube-root power and complex phase (as in Hermansky1990)
-        stfty=zeros(nfin,nfft);                                % space for cube-root power frequency-interpolated STFT
+        stftg=mtt*stftc;                                        % do time interpolation
+    case 'magcph'                                               % interpolate magnitude and complex phase
+        stfty=zeros(nfin,nfft);                                 % space for magnitude interpolated STFT
         for i=1:nfin                                            % loop through each frame
             nfftx=meta(i,3);                                    % input DFT length
-            mtf=fftresm(nfftx,nfft,q.interpp);               % frequency transformation matrix
+            mtf=fftresm(nfftx,nfft,q.interpp);                  % frequency transformation matrix
+            stftc(i,:)=stftx(i,1:nfftx)*mtf;                    % interpolate complex STFT
+            stfty(i,:)=abs(stftx(i,1:nfftx))*mtf;               % interpolate magnitude STFT
+        end
+        if q.interpseq                                              % convert to intermediate complex STFT
+            msk=stftc~=0;                                           % only bother with phase if magnitude is non-zero
+            stfty(msk)=stfty(msk).*stftc(msk)./abs(stftc(msk));     % impose phase from complex interpolation (except where complex STFT is zero)
+            stftc=mtt*stfty;                                        % time-interpolate the complex intermediate STFT
+            stftg=mtt*abs(stfty);                                   % time-interpolate the magnitude
+            msk=stftc~=0;                                           % mask for phase imposition
+            stftg(msk)=stftg(msk).*stftc(msk)./abs(stftc(msk));     % impose phase from complex interpolation (except where complex STFT is zero)
+        else                                                        % leave intermediate STFT as magnitude+phase
+            stftc=mtt*stftc;                                        % time-interpolate the complex intermediate STFT
+            stftg=mtt*stfty;                                        % time-interpolate the magnitude
+            msk=stftc~=0;                                           % mask for phase imposition
+            stftg(msk)=stftg(msk).*stftc(msk)./abs(stftc(msk));     % impose phase from complex interpolation (except where complex STFT is zero)
+        end
+    case 'crmcph'                                               % interpolate cube-root power and complex phase (as in Hermansky1990)
+        stfty=zeros(nfin,nfft);                                 % space for cube-root power frequency-interpolated STFT
+        for i=1:nfin                                            % loop through each frame
+            nfftx=meta(i,3);                                    % input DFT length
+            mtf=fftresm(nfftx,nfft,q.interpp);                  % frequency transformation matrix
             stftc(i,:)=stftx(i,1:nfftx)*mtf;                    % interpolate complex STFT
             stfty(i,:)=abs(stftx(i,1:nfftx)).^(2/3)*mtf;        % interpolate cube-root power STFT
         end
-        if q.interpseq                                        % convert to intermediate complex STFT (with cube root power)
+        if q.interpseq                                          % convert to intermediate complex STFT (with cube root power)
             msk=stftc~=0;                                       % only bother with phase if magnitude is non-zero
             stfty(msk)=stfty(msk).*stftc(msk)./abs(stftc(msk)); % impose phase from complex interpolation on cube-root power
             stftc=mtt*stfty;                                    % time-interpolate the complex intermediate STFT
