@@ -1,6 +1,9 @@
 function mt=fftresm(m,n,p)
 % create matrix to resample FFT in order to change the frequency resolution
 %
+% Usage:    x=fft(s);                           % DFT of time waveform (s is a row vector)
+%           y=x*fftresm(length(x),n);           % transform to length-n DFT
+%
 %  Inputs: m        size of input FFT
 %          n        size of output FFT
 %          p        odd order of the filter generating the intermedate signal [5]
