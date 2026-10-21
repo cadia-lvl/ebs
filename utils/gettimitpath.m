@@ -9,6 +9,8 @@ else
             p='/Users/jg/Data/TIMIT/timit/';
         case 'ee-dmb4'
             p='D:/OneDrive - Imperial College London/work/data/speech/timit/timit/';    % path to timit sub-folder of timit CD
+        case 'ee-dmblap5'
+            p='C:/Users/dmb/OneDrive - Imperial College London/work/data/speech/timit/timit/';    % path to timit sub-folder of timit CD
         case 'elitedesk'
             p='D:/OneDrive - Imperial College London/work/data/speech/timit/timit/';    % path to timit sub-folder of timit CD
         otherwise
