@@ -448,7 +448,7 @@ dy_fwlen = 0.00045;     % 0.00045 works well
 % perform group delay calculation
 
 gw=2*floor(dy_gwlen*fs/2)+1;            % force window length to be odd
-ghw=window('hamming',gw,'s');
+ghw=window('hamming',gw);               % previously window('hamming',gw,'s') but 's' gives error because ambiguous ('symmetric' vs 'single')
 ghw = ghw(:);                           % force to be a column (dmb thinks window gives a row - and he should know as he wrote it!)
 ghwn=ghw'.*(gw-1:-2:1-gw)/2;            % weighted window: zero in middle
 
@@ -460,7 +460,7 @@ y=yn(gw:end)./yd(gw:end);               % delete filter startup transient
 toff=(gw-1)/2;
 fw=2*floor(dy_fwlen*fs/2)+1;            % force window length to be odd
 if fw>1
-    daw=window('hamming',fw,'s');
+    daw=window('hamming',fw);           % previously window('hamming',gw,'s') but 's' gives error because ambiguous ('symmetric' vs 'single')
     y=filter(daw,1,y)/sum(daw);         % low pass filter 
     toff=toff-(fw-1)/2;
 end
