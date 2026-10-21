@@ -107,7 +107,7 @@ ty=cell(1,2);                               % initialize list of TIMIT files to 
 for itt=1:2 % training and testing
     ty{itt}=timitfiles(timflg{itt},nfile(itt),timit); % list of TIMIT files to use
 end
-% initialize per-conficuration statistics
+% initialize per-configuration statistics
 cfnames=cell(ncfg,1);                                    % list of configuration names
 cfresults=cell(ncfg,1);                                  % space for meta information
 acc=zeros(1,ncfg); % overall accuracy
