@@ -38,12 +38,12 @@ if isempty(q0)
     q0.ssqthr=1.00;                 % stopping threshold (only for par.MELphase='piecewiselin')
     q0.fbank='m';                   % filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel}
     q0.groupdelay='none';           % stft uses DFT rather than DCT
-    p2=2*pi;
+    p2=2*pi;                        % constant 2*pi
 end
 %
 % update algorithm parameters
 if nargin>=4
-    q=v_paramsetch(q0,par);         % update parameters from pp input
+    q=v_paramsetch(q0,par);         % update parameters from par input
 else
     q=q0;                           % just copy default parameters
 end
