@@ -9,11 +9,13 @@ clear;
 close all;
 timit=gettimitpath;                         % get path to timit subfolder of timit database
 %
-parvar={'cfname' 'epoch' 'nmix'};                                                              % cell array row listing the parameters to change during trials
+parvar={'cfname' 'epoch' 'mfcclms' 'nmix'};                                                              % cell array row listing the parameters to change during trials
 configpars={  % one row per trial giving the parameter values: the parameters listed in parvar come first followed by parameter-value pairs
-    {'30ms-g1' 0 1}; 
+    {'30ms-g1' 0 0 1}; % fixed-frames, normal MFCC, single gaussian
     % {'30ms-m4' 0 4};
-    {'ep-g1' 1 1};
+    % {'ep-g1' 1 0 1}; % epoch-interpolated MFCC, single gaussian
+    {'30ms-lms-g1' 0 1 1}; % fixed-frames,direct MFCC, single gaussian
+    % {'ep-lms-g1' 1 1 1}; % epoch frames, direct MFCC, single gaussian
     % {'epq-natm-g1' 1 1 'smoothalg' 'quadlog' 'interpstft' 'natural' 'interpdom' 'magcph'};
     % {'ep-g4' 1 4};
     % {'ep-g1-lda15' 1 1 'ldatype' 'lda'};
@@ -42,9 +44,10 @@ nfile=[10 10];                      		% number of TIMIT files for training and t
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % = global =
 par0.toptail=2;                      % 0 = keep all frames, 1 = Remove leading/training silence, 2 = keep only vowels
-par0.epoch=       1;                 % 0=fixed frames, 1=epoch-based frames, 2=epoch-based interpolated in log-domain to fixed
+par0.epoch=       1;                 % 0=fixed frames, 1=epoch-based frames, 2=epoch-based -> fixed in log-domain [unavailable?] 
 par0.fixfl=       0.03;              % target frame length in seconds [0.03]
 par0.autoscale=   'energy';          % scale reconstructed waveform to match: {'none','energy'}
+par0.mfcclms=    0;                  % 0 = MFCC calculation via filterbank, 1 = Least mean squares MFCC calculation direcly from STFT
 par0.cfname=      '';                % configuration name
 % = gs_frames =
 par0.pitchlim=    [40 50 400];       % [min targt max] pitch (Hz)
@@ -72,7 +75,7 @@ par0.interpext=    'omit';            % Handling of extrapolated frames: {'omit'
 par0.nmel=        29;                % number of mel bins = 29 @ 16kHz
 par0.fbank=       'm';               % filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel}
 par0.keepDC=      0;                 % preserve DC as the lowest MEL bin {0, 1}
-par0.MELphase=    'piecewiselin';          % MEL STFT phase calculation: {'true','zero','linear','piecewiselin','piecewiselind','grpdel'}
+par0.MELphase=    'piecewiselin';    % MEL STFT phase calculation: {'true','zero','linear','piecewiselin','piecewiselind','grpdel'}
 par0.MELdom=      'mag';             % MEL filterbank domain: {'mag', 'pow'}
 par0.regwt=       0.01;              % regularizing factor for phase weights when par.MELphase='piecewiselin'
 par0.loops=       5;                 % maximum number of iterations when par.MELphase='piecewiselin'
@@ -235,6 +238,12 @@ for icfg=1:ncfg                                         % loop through parameter
             [uniph,phv]=w_phoncode('tFU',phn(:,2),11);              % convert phone symbols to TIMIT phone numbers
             ophnt=cell2mat(phn(:,1));                               % start and end times of phones [seconds]
             nphone=size(ophnt,1);                                   % number of phones in this utterance
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % Calculate the feature vectors for each frame:                                 %
+            %     c(nf,:)  feature vector for recognition (e.g. Mel cepstrum + Delta coefs) %
+            %     y(nf,:)  Log Mel spectrum for plotting graph 800 only                     %
+            %     tc(nf,1) frame centres in seconds (1st sample @ zero)                     %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             if par.epoch                                            % *** epoch-based frames ***
                 frameend=gs_frames(s,fs,par);                       % last sample of each frame
                 framelim=[[1 frameend(1:end-1)+1];frameend];        % create frame limits
@@ -244,16 +253,26 @@ for icfg=1:ncfg                                         % loop through parameter
                 % [stft,meta]=stftgrid(stft,meta,par);              % OLD: optionally map onto a fixed grid and update stft and meta
                 grid=[meta(1,1) round(par.interpflen*fs) round(par.interpflen*fs) round(par.interpflen*fs/par.interpov)];      % [firstsamp framelen ndft nhop] for uniform grid
                 [stft,meta]=stftegrid(stft,meta,grid,par);          % optionally map onto a fixed grid
-                [melbm,melbu,cfhz,mbm]=stfte2melc(stft,fs,par.nmel,par);
-                c=mel2melcep(melbm,par.wcep,par.ncep);              % calculate the mel-cepstrum feature vector, c
                 tc=(meta(:,1:2)*[1;0.5]-1.5)/fs;                    % frame centres in seconds (1st sample @ zero)
-                pth=max(melbm(:))*1E-20;                            % low threshold to avoid infinite logs
-                y=log(max(melbm,pth));                              % mel log-spectrogram
+                if par.mfcclms
+                    [c,tcx,cce]=stfte2mfcc(stft,fs,par.wcep,par.ncep,fs*tc+1);
+                    y=v_irdct(cce')';                               % invert DCT to get implies log spectrum
+                else
+                    [melbm,melbu,cfhz,mbm]=stfte2melc(stft,fs,par.nmel,par); % apply a Mel filterbank
+                    c=mel2melcep(melbm,par.wcep,par.ncep);          % calculate the mel-cepstrum feature vector, c
+                    pth=max(melbm(:))*1E-20;                        % low threshold to avoid infinite logs
+                    y=log(max(melbm,pth));                          % mel log-spectrogram
+                end
             else                                                    % *** fixed frames ***
                 [z,tc]=v_enframe(s,0.54-0.46*cos(2*pi*(0:nfft-1)'/(nfft-1)),inc); % Hamming window
                 tc=(tc-1)/fs;                                       % times of frame centres with 1st sample @ 0 [seconds]
                 ss=v_rfft(z,nfft,2);
-                [c,tcmc,y,mc]=w_melcepstx(ss,fs,[par.wcep 'S'],par.ncep,par.nmel,nfft);       % do mel cepstrum with input as stft
+                if par.mfcclms
+                    [c,tcx,cce]=stfte2mfcc(ss,fs,par.wcep,par.ncep,fs*tc+1);
+                    y=v_irdct(cce')';                               % invert DCT to get implies log spectrum
+                else
+                    [c,tcmc,y,mc]=w_melcepstx(ss,fs,[par.wcep 'S'],par.ncep,par.nmel,nfft);       % do mel cepstrum with input as stft
+                end
             end
             nframe=size(c,1);                                       % number of frames
             [tt,ixt,jxt]=v_sort([tc;ophnt(:,1)]); % log mel spectrum
@@ -408,7 +427,7 @@ for icfg=1:ncfg                                         % loop through parameter
             % set(gca,'yticklabel',yticklab);
             xlabel('Phone');
             ylabel('% correct');
-            title(sprintf('Reconition: %s',par.cfname));
+            title(sprintf('Recognition: %s',par.cfname));
         end
         if any(pltsel==400) %  400: Confusion Matrix
             figure(400+icfg);
@@ -509,12 +528,12 @@ if any(pltsel==1)                                       %  1: List of configurat
     axis off
     title('Configurations');
 end
-if any(pltsel==500)                                     %  500: Spectrogram
+if any(pltsel==500)                                     %  500: Spectrogram of last test file
     figure(500);
     phnu=phn;
     phnu(:,2)=cellstr(uniph);
     v_spgrambw(s,fs,'pJcwatmf',[],[],[],[],{wrd phnu});
-    title('Test Sentence');
+    title(ty{itt}{ifile});
 end
 if any(pltsel==7)                                       %  7: Accuracy
     figure(7);
