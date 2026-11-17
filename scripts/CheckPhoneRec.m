@@ -13,9 +13,9 @@ parvar={'cfname' 'epoch' 'mfcclms' 'nmix'};                                     
 configpars={  % one row per trial giving the parameter values: the parameters listed in parvar come first followed by parameter-value pairs
     {'30ms-g1' 0 0 1}; % fixed-frames, normal MFCC, single gaussian
     % {'30ms-m4' 0 4};
-    % {'ep-g1' 1 0 1}; % epoch-interpolated MFCC, single gaussian
+    {'ep-g1' 1 0 1}; % epoch-interpolated MFCC, single gaussian
     {'30ms-lms-g1' 0 1 1}; % fixed-frames,direct MFCC, single gaussian
-    % {'ep-lms-g1' 1 1 1}; % epoch frames, direct MFCC, single gaussian
+    {'ep-lms-g1' 1 1 1}; % epoch frames, direct MFCC, single gaussian
     % {'epq-natm-g1' 1 1 'smoothalg' 'quadlog' 'interpstft' 'natural' 'interpdom' 'magcph'};
     % {'ep-g4' 1 4};
     % {'ep-g1-lda15' 1 1 'ldatype' 'lda'};
@@ -36,8 +36,8 @@ configpars={  % one row per trial giving the parameter values: the parameters li
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 parplt=[1:10]; 								% configurations to plot
 pltsel=[1 7 300:100:800]; 				    % list of plots to do
-% nfile=[100 100];                      	  % number of TIMIT files for training and testing
-nfile=[10 10];                      		% number of TIMIT files for training and testing
+nfile=[100 100];                      	  % number of TIMIT files for training and testing
+% nfile=[10 10];                      		% number of TIMIT files for training and testing
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    Default parameter values     %
@@ -69,8 +69,8 @@ par0.interpstft=  'none';            % interpolation method for call to griddata
 par0.interpflen=  0.007;             % interpolation target frame length in seconds (reciprocal of frequency-grid spacing in Hz) [0.01]
 par0.interpov=    1;                 % interpolation overlap factor; 1 for no overlap, 2 for 50%; inter-frame hop is par.interpflen/par.interpov
 par0.interpdom=   'cplx';            % interpolation domain: {'cplx','magcph','crmcph'}
-par0.interpfsps=   1e-5;              % fs^-2 multiplied by the distance in Hz that is equivalent to a distance of one second (fs per sample)
-par0.interpext=    'omit';            % Handling of extrapolated frames: {'omit','zero','rep','refl'}
+par0.interpfsps=   1e-5;             % fs^-2 multiplied by the distance in Hz that is equivalent to a distance of one second (fs per sample)
+par0.interpext=    'omit';           % Handling of extrapolated frames: {'omit','zero','rep','refl'}
 % = stfte2melc
 par0.nmel=        29;                % number of mel bins = 29 @ 16kHz
 par0.fbank=       'm';               % filterbank scale: {'b','e','f','m'}={Bark, Erb-rate, Linear, Mel}
@@ -81,42 +81,44 @@ par0.regwt=       0.01;              % regularizing factor for phase weights whe
 par0.loops=       5;                 % maximum number of iterations when par.MELphase='piecewiselin'
 par0.ssqthr=      1.0;               % stopping threshold when par.MELphase='piecewiselin'
 % = melc2stfte
-par0.invmethod=  'pinv';             %  MEL inversion method: {'pinv','transp','linterp'} ['linterp']
+par0.invmethod=   'pinv';            %  MEL inversion method: {'pinv','transp','linterp'} ['linterp']
 % = mel2melcep
-par0.ncep=12;                                % number of cepstral coefficients
-par0.wcep='d0';                              % flags for delta and delta-delta coefficients
+par0.ncep=        12;                % number of cepstral coefficients
+par0.wcep=        'd0';              % flags for delta and delta-delta coefficients
 % = LDA feature compression
-par0.nlda=15;                                % number of parameters after LDA (or 0 for keep same dimension)
-par0.ldatype='none';                         % LDA algorithm: {'none','lda','hda'}
+par0.nlda=        15;                % number of parameters after LDA (or 0 for keep same dimension)
+par0.ldatype=     'none';            % LDA algorithm: {'none','lda','hda'}
 % = phone recognition
-par0.ndp=0;                                  % number of previous paths to keep in Dynamic programming (0 for no DP,>=67 for all phones)
-par0.tranwt=0.6;                             % weighting for transition log probability (0=ignore transition probs, 1=take full account)
-par0.fullcov=0;                              % Covariance matrices: 0=diagonal, 1=full
-par0.nmix=1;                                 % number of mixtures per phone
+par0.ndp=         0;                 % number of previous paths to keep in Dynamic programming (0 for no DP,>=67 for all phones)
+par0.tranwt=      0.6;               % weighting for transition log probability (0=ignore transition probs, 1=take full account)
+par0.fullcov=     0;                 % Covariance matrices: 0=diagonal, 1=full
+par0.nmix=        1;                 % number of mixtures per phone
 %
 % set global parameters
 %
-fs=16000;                                   % TIMIT sample frequency
-timflg={'n','t'};                           % TIMIT file options for training and testing
+fs=16000;                            % TIMIT sample frequency
+timflg={'n','t'};                    % TIMIT file options for training and testing
 %
 % derived parameters
 %
-ncfg=size(configpars,1);                        % number of parameter configurations
-% nmel=floor(3*log(fs));                      % number of mel bins = 29 @ 16kHz
-[sph,vph]=w_phoncode('tU');                 % list of all TIMIT phones
-nphons=length(sph);                         % number of possible TIMIT phones [67]
-silphon=64;                                 % silence phone number (currently 64)
-ty=cell(1,2);                               % initialize list of TIMIT files to use
-for itt=1:2 % training and testing
+ncfg=size(configpars,1);                % number of parameter configurations
+% nmel=floor(3*log(fs));                % number of mel bins = 29 @ 16kHz
+[sph,vph]=w_phoncode('tU');             % list of all TIMIT phones
+nphons=length(sph);                     % number of possible TIMIT phones [67]
+silphon=64;                             % silence phone number (currently 64)
+ty=cell(1,2);                           % initialize list of TIMIT files to use
+for itt=1:2                             % training and testing
     ty{itt}=timitfiles(timflg{itt},nfile(itt),timit); % list of TIMIT files to use
 end
+%
 % initialize per-configuration statistics
-cfnames=cell(ncfg,1);                                    % list of configuration names
-cfresults=cell(ncfg,1);                                  % space for meta information
-acc=zeros(1,ncfg); % overall accuracy
-for icfg=1:ncfg                                         % loop through parameter configurations
-    [par,partxt]=parupdate(par0,configpars{icfg},parvar,'%cfname%: $c&=%&%$, $'); % Set up the parameters for this trial
-    cfnames{icfg}=par.cfname;                                   % save configuration name
+%
+cfnames=cell(ncfg,1);                   % list of configuration names
+cfresults=cell(ncfg,1);                 % space for meta information
+acc=zeros(1,ncfg);                      % overall accuracy
+for icfg=1:ncfg                         % loop through parameter configurations
+    [par,partxt]=parupdate(par0,configpars{icfg},parvar,'%cfname%: $c&=%&%$, $');   % Set up the parameters for this trial
+    cfnames{icfg}=par.cfname;           % save configuration name
     %
     % derived parameters that depend on parameter configuration
     %
@@ -250,13 +252,12 @@ for icfg=1:ncfg                                         % loop through parameter
                 framelen=1+[-1 1]*framelim;                         % length of each frame in samples
                 metain=[framelim(1,:);framelen]';
                 [stft,meta]=stfte(s,metain,[],par);                 % epoch-based STFT
-                % [stft,meta]=stftgrid(stft,meta,par);              % OLD: optionally map onto a fixed grid and update stft and meta
                 grid=[meta(1,1) round(par.interpflen*fs) round(par.interpflen*fs) round(par.interpflen*fs/par.interpov)];      % [firstsamp framelen ndft nhop] for uniform grid
                 [stft,meta]=stftegrid(stft,meta,grid,par);          % optionally map onto a fixed grid
                 tc=(meta(:,1:2)*[1;0.5]-1.5)/fs;                    % frame centres in seconds (1st sample @ zero)
                 if par.mfcclms
-                    [c,tcx,cce]=stfte2mfcc(stft,fs,par.wcep,par.ncep,fs*tc+1);
-                    y=v_irdct(cce')';                               % invert DCT to get implies log spectrum
+                    [c,tcx,cce]=stfte2mfcc(stft,fs,[par.wcep 'pw'],[par.ncep 0.125],fs*tc+1);
+                    y=v_irdct(cce')';                               % invert DCT to get implied log spectrum
                 else
                     [melbm,melbu,cfhz,mbm]=stfte2melc(stft,fs,par.nmel,par); % apply a Mel filterbank
                     c=mel2melcep(melbm,par.wcep,par.ncep);          % calculate the mel-cepstrum feature vector, c
@@ -266,10 +267,10 @@ for icfg=1:ncfg                                         % loop through parameter
             else                                                    % *** fixed frames ***
                 [z,tc]=v_enframe(s,0.54-0.46*cos(2*pi*(0:nfft-1)'/(nfft-1)),inc); % Hamming window
                 tc=(tc-1)/fs;                                       % times of frame centres with 1st sample @ 0 [seconds]
-                ss=v_rfft(z,nfft,2);
+                ss=v_rfft(z,nfft,2);                                % calculate stft (positive frequencies only)
                 if par.mfcclms
-                    [c,tcx,cce]=stfte2mfcc(ss,fs,par.wcep,par.ncep,fs*tc+1);
-                    y=v_irdct(cce')';                               % invert DCT to get implies log spectrum
+                    [c,tcx,cce]=stfte2mfcc([ss zeros(size(ss,1),nfft-size(ss,2))],fs,[par.wcep 'pw'],[par.ncep 0.125],fs*tc+1); % [need full-size stft]
+                    y=v_irdct(cce')';                               % invert DCT to get implied log spectrum
                 else
                     [c,tcmc,y,mc]=w_melcepstx(ss,fs,[par.wcep 'S'],par.ncep,par.nmel,nfft);       % do mel cepstrum with input as stft
                 end
